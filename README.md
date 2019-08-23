@@ -1,29 +1,5 @@
 # garageband-piano-js
 
-## Project setup
-```
-yarn install
-```
-
-### Compiles and hot-reloads for development
-```
-yarn run serve
-```
-
-### Compiles and minifies for production
-```
-yarn run build
-```
-
-### Run your tests
-```
-yarn run test
-```
-
-### Lints and fixes files
-```
-yarn run lint
-```
-
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+- https://developer.mozilla.org/zh-CN/docs/Web/HTML/Element/video#attr-preload
+- https://developer.mozilla.org/zh-CN/docs/Web/API/AudioContext
+- https://www.google.com/search?q=webaudio&oq=webaudio&aqs=chrome..69i57&sourceid=chrome&ie=UTF-8

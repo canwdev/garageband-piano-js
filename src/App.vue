@@ -36,7 +36,7 @@
 <script>
   import PianoKey from '@/components/PianoKey'
 
-  const INIT_VOLUME = 0.3 // 初始音量
+  const INIT_VOLUME = 0.5 // 初始音量
   const AUDIO_COUNT = 88
   const keyAudios = [] // 加载音频文件
   for (let i = 1; i <= AUDIO_COUNT; i++) {
@@ -137,7 +137,7 @@
               this.keyOffset = Math.max(4, this.keyOffset - 12)
               break;
             case 'X':
-              this.keyOffset = Math.min(88, this.keyOffset + 12)
+              this.keyOffset = Math.min(76, this.keyOffset + 12)
               break;
             case 'C':
               this.volume = Math.max(0, this.volume - 0.1)

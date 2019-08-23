@@ -1,5 +1,6 @@
 var path = require('path');
 module.exports = {
+  publicPath: './',
   css: {
     loaderOptions: {
       // 引入 stylus 全局变量
