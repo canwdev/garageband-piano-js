@@ -6,7 +6,7 @@
       <p>{{ loadingCount }} / {{ AUDIO_COUNT }}</p>
     </div>
     <div class="piano-body">
-      <h5>音乐键入 - 无名大钢琴</h5>
+      <h5 ref="dragBar">音乐键入 - 无名大钢琴</h5>
 
       <div class="info-wrap">
         <div class="desc">音量：{{ volume.toFixed(2) * 100 }}%</div>
@@ -42,7 +42,7 @@
 
 <script>
   import PianoKey from '@/components/PianoKey'
-  import {getAudioBuffer} from "@/utils/index"
+  import {getAudioBuffer, setDraggable} from "@/utils/index"
   import {initVisualizer} from "@/utils/visualizer"
 
   const KEY_OFFSET = parseFloat(localStorage.getItem('KEY_OFFSET')) || 52 // 初始音频偏移量
@@ -110,6 +110,7 @@
     },
     mounted() {
       this.initPiano()
+      setDraggable(this.$refs.dragBar, this.$refs.dragBar.parentElement)
     },
     beforeDestroy() {
       this.destroyPiano()
@@ -279,7 +280,7 @@
       flex-direction column
 
     .piano-body
-      position: relative
+      position: absolute
       z-index 1
       flex-shrink: 0
       border 1px solid lighten($key_color_border, 10)
