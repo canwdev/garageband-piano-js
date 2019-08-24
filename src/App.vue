@@ -3,10 +3,9 @@
     <h5>音乐键入 - 无名大钢琴</h5>
 
     <div class="info-wrap">
-      <div class="desc">音量：{{ volume.toFixed(1) }}</div>
+      <div class="desc">音量：{{ volume.toFixed(2) * 100 }}%</div>
       <div class="desc">偏移：{{ keyOffset }} / {{ keyCount }}</div>
-      <div class="desc pro">力度：??</div>
-      <div class="desc pro">八度音程：??</div>
+      <div class="desc pro">八度音程：{{ octave }}</div>
       <div class="desc pro2">按下：{{ keyPressed.join(' ') }}</div>
     </div>
 
@@ -17,7 +16,7 @@
           :label="v.label"
           :key-type="v.type"
           :active="keyPressed.indexOf(v.label) !== -1"
-          @mousedown.native="handleMouseClick(i)"
+          @mousedown.native="playAudio(i)"
       />
     </div>
     <div class="control-wrap">
@@ -28,6 +27,7 @@
           :key-type="v.type"
           :extra-label="v.extraLabel"
           :active="keyPressed.indexOf(v.label) !== -1"
+          @mousedown.native="setSettings(v.label)"
       />
     </div>
   </div>
@@ -36,13 +36,15 @@
 <script>
   import PianoKey from '@/components/PianoKey'
 
-  const INIT_VOLUME = 0.5 // 初始音量
+  const KEY_OFFSET = parseFloat(localStorage.getItem('KEY_OFFSET')) || 52 // 初始音频偏移量
+  const VOLUME = parseFloat(localStorage.getItem('VOLUME')) || 0.5 // 初始音量
+  const SEMITONE = 12 // 两个半音的距离
   const AUDIO_COUNT = 88
   const keyAudios = [] // 加载音频文件
   for (let i = 1; i <= AUDIO_COUNT; i++) {
     let audio = keyAudios[i] = new Audio(require(`@/assets/pianoKeyAudio/${i}.mp3`))
     audio.preload = 'auto'
-    audio.volume = INIT_VOLUME
+    audio.volume = VOLUME
   }
   console.log('加载音频完成', {keyAudios})
 
@@ -52,8 +54,8 @@
     },
     data: () => ({
       keyCount: AUDIO_COUNT,
-      keyOffset: 52,
-      volume: INIT_VOLUME,
+      keyOffset: KEY_OFFSET,
+      volume: VOLUME,
       keyboardLayout: [
         {label: 'A', type: 0},
         {label: 'W', type: 1},
@@ -77,11 +79,18 @@
       controlKeys: [
         {label: 'Z', extraLabel: '-', type: 3},
         {label: 'X', extraLabel: '+', type: 3},
-        {label: 'C', extraLabel: '-', type: 3},
-        {label: 'V', extraLabel: '+', type: 3},
+        {label: 'C', extraLabel: '🔈-', type: 3},
+        {label: 'V', extraLabel: '🔈+', type: 3},
       ],
       keyPressed: [] // 维护按下按键的数组
     }),
+    computed: {
+      // 八度音程表示
+      octave() {
+
+        return 'C' + Math.floor(this.keyOffset/SEMITONE)
+      }
+    },
     watch: {
       volume(nv) {
         const vol = nv.toFixed(1)
@@ -89,6 +98,11 @@
         for (let i = 1; i <= AUDIO_COUNT; i++) {
           keyAudios[i].volume = vol
         }
+        // 保存设置
+        localStorage.setItem('VOLUME', vol)
+      },
+      keyOffset(nv) {
+        localStorage.setItem('KEY_OFFSET', nv)
       }
     },
     mounted() {
@@ -132,32 +146,26 @@
         }
 
         if (fnI !== -1 && evt.type === 'keyup') { // 仅处理功能键
-          switch (key) {
-            case 'Z':
-              this.keyOffset = Math.max(4, this.keyOffset - 12)
-              break;
-            case 'X':
-              this.keyOffset = Math.min(76, this.keyOffset + 12)
-              break;
-            case 'C':
-              this.volume = Math.max(0, this.volume - 0.1)
-              break;
-            case 'V':
-              this.volume = Math.min(1, this.volume + 0.1)
-              break;
-          }
+          this.setSettings(key)
         }
 
 
       },
-      handleMouseClick(i, play = true) {
-
-        console.log('click', i)
-
-        if (play) {
-          this.playAudio(i)
-        } else {
-
+      // 调整设置
+      setSettings(keyLabel) {
+        switch (keyLabel) {
+          case 'Z':
+            this.keyOffset = Math.max(4, this.keyOffset - SEMITONE)
+            break;
+          case 'X':
+            this.keyOffset = Math.min(76, this.keyOffset + SEMITONE)
+            break;
+          case 'C':
+            this.volume = Math.max(0, this.volume - 0.1)
+            break;
+          case 'V':
+            this.volume = Math.min(1, this.volume + 0.1)
+            break;
         }
       },
       playAudio(i) {
@@ -175,6 +183,11 @@
 </script>
 
 <style lang="stylus" scoped>
+  $color_blue = #2EB1D0
+  $color_purple = #AF55D7
+  $color_green = #4DD584
+  $color_yellow = #DFD565
+  $color_orange = #E8A44A
 
   .piano-body
     border-radius 8px
@@ -197,16 +210,16 @@
       .desc
         display inline-block
         padding 3px 4px
-        background #3EA5C4
+        background $color_blue
         color: #fff
         font-size 12px
         border-radius 3px
 
         &.pro
-          background #9A5FCC
+          background $color_purple
 
         &.pro2
-          background #61C67C
+          background $color_green
 
         & + .desc
           margin-left: 5px
@@ -223,18 +236,19 @@
 
     .control-wrap
       margin-top: 2px
+      padding-left: 25px
 
       .key:nth-child(1), .key:nth-child(2)
-        background #DCCB69
+        background $color_yellow
 
         &:active, &.active
-          background darken(#DCCB69, 10)
+          background darken($color_yellow, 10)
 
       .key:nth-child(3), .key:nth-child(4)
-        background #E09C53
+        background $color_orange
 
         &:active, &.active
-          background darken(#E09C53, 10)
+          background darken($color_orange, 10)
 
   /**/
 </style>

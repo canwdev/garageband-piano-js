@@ -31,8 +31,8 @@
 </script>
 
 <style lang="stylus" scoped>
-  $key_color_white = #D8D8D8
-  $key_color_black = #292929
+  $key_color_white = #DDDDDD
+  $key_color_black = #2E2E2E
 
   .key
     display inline-block
@@ -54,6 +54,7 @@
       background darken($key_color_white, 10)
     &.black
       background $key_color_black
+      border-color $key_color_black
       color #fff
       height 51px
       z-index 2
