@@ -1,58 +1,60 @@
 <template>
-  <div id="app" class="piano-body">
-    <h5>音乐键入 - 无名大钢琴</h5>
-
-    <div class="info-wrap">
-      <div class="desc">音量：{{ volume.toFixed(2) * 100 }}%</div>
-      <div class="desc">偏移：{{ keyOffset }} / {{ keyCount }}</div>
-      <div class="desc pro">八度音程：{{ octave }}</div>
-      <div class="desc pro2">按下：{{ keyPressed.join(' ') }}</div>
+  <div id="app">
+    <div v-show="loadingCount+1 <= AUDIO_COUNT" class="piano-loading">
+      <p>加载音频素材...</p>
+      <p>{{ loadingCount }} / {{ AUDIO_COUNT }}</p>
     </div>
+    <div class="piano-body">
+      <h5>音乐键入 - 无名大钢琴</h5>
 
-    <div class="keyboard-wrap">
-      <PianoKey
-          v-for="(v, i) in keyboardLayout"
-          :key="i"
-          :label="v.label"
-          :key-type="v.type"
-          :active="keyPressed.indexOf(v.label) !== -1"
-          @mousedown.native="playAudio(i)"
-      />
-    </div>
-    <div class="control-wrap">
-      <PianoKey
-          v-for="(v, i) in controlKeys"
-          :key="i"
-          :label="v.label"
-          :key-type="v.type"
-          :extra-label="v.extraLabel"
-          :active="keyPressed.indexOf(v.label) !== -1"
-          @mousedown.native="setSettings(v.label)"
-      />
+      <div class="info-wrap">
+        <div class="desc">音量：{{ volume.toFixed(2) * 100 }}%</div>
+        <div class="desc">偏移：{{ keyOffset }} / {{ keyCount }}</div>
+        <div class="desc pro">八度音程：{{ octave }}</div>
+        <div class="desc pro2">按下：{{ keyPressed.join(' ') }}</div>
+      </div>
+
+      <div class="keyboard-wrap">
+        <PianoKey
+            v-for="(v, i) in keyboardLayout"
+            :key="i"
+            :label="v.label"
+            :key-type="v.type"
+            :active="keyPressed.indexOf(v.label) !== -1"
+            @mousedown.native="playAudio(i)"
+        />
+      </div>
+      <div class="control-wrap">
+        <PianoKey
+            v-for="(v, i) in controlKeys"
+            :key="i"
+            :label="v.label"
+            :key-type="v.type"
+            :extra-label="v.extraLabel"
+            :active="keyPressed.indexOf(v.label) !== -1"
+            @mousedown.native="setSettings(v.label)"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script>
   import PianoKey from '@/components/PianoKey'
+  import {getAudioBuffer} from "@/utils"
 
   const KEY_OFFSET = parseFloat(localStorage.getItem('KEY_OFFSET')) || 52 // 初始音频偏移量
-  const VOLUME = parseFloat(localStorage.getItem('VOLUME')) || 0.5 // 初始音量
+  const VOLUME = parseFloat(localStorage.getItem('VOLUME')) || 1 // 初始音量
   const SEMITONE = 12 // 两个半音的距离
   const AUDIO_COUNT = 88
-  const keyAudios = [] // 加载音频文件
-  for (let i = 1; i <= AUDIO_COUNT; i++) {
-    let audio = keyAudios[i] = new Audio(require(`@/assets/pianoKeyAudio/${i}.mp3`))
-    audio.preload = 'auto'
-    audio.volume = VOLUME
-  }
-  console.log('加载音频完成', {keyAudios})
 
   export default {
     components: {
       PianoKey,
     },
     data: () => ({
+      AUDIO_COUNT,
+      loadingCount: 0,
       keyCount: AUDIO_COUNT,
       keyOffset: KEY_OFFSET,
       volume: VOLUME,
@@ -88,16 +90,15 @@
       // 八度音程表示
       octave() {
 
-        return 'C' + Math.floor(this.keyOffset/SEMITONE)
+        return 'C' + Math.floor(this.keyOffset / SEMITONE)
       }
     },
     watch: {
       volume(nv) {
         const vol = nv.toFixed(1)
-        // 更新每一个音的音量
-        for (let i = 1; i <= AUDIO_COUNT; i++) {
-          keyAudios[i].volume = vol
-        }
+        // 设置音量
+        this.gainNode.gain.value = vol
+
         // 保存设置
         localStorage.setItem('VOLUME', vol)
       },
@@ -106,10 +107,44 @@
       }
     },
     mounted() {
-      window.addEventListener('keydown', this.handleKey)
-      window.addEventListener('keyup', this.handleKey)
+      this.initPiano()
+    },
+    beforeDestroy() {
+      this.destroyPiano()
     },
     methods: {
+      async initPiano() {
+        if (!window.AudioContext) {
+          alert('您的浏览器不支持 Web Audio API，无法使用本产品')
+          return
+        }
+
+        // 创建音频上下文对象
+        this.audioContext = new AudioContext()
+        // 创建增益节点
+        this.gainNode = this.audioContext.createGain()
+        // 设置初始音量
+        this.gainNode.gain.value = VOLUME
+        this.keyAudiosBuffer = []
+
+        // 获取所有音频buffer
+        for (let i = 1; i <= AUDIO_COUNT; i++) {
+
+          const buffer = await getAudioBuffer(this.audioContext, require(`@/assets/pianoKeyAudio/${i}.mp3`)).catch(e => {
+            console.error(e)
+          })
+
+          this.keyAudiosBuffer[i] = buffer
+          this.loadingCount = i
+        }
+
+        window.addEventListener('keydown', this.handleKey)
+        window.addEventListener('keyup', this.handleKey)
+      },
+      destroyPiano() {
+        window.removeEventListener('keydown', this.handleKey)
+        window.removeEventListener('keyup', this.handleKey)
+      },
       handleKey(evt) {
         const key = evt.key.toUpperCase()
 
@@ -148,8 +183,6 @@
         if (fnI !== -1 && evt.type === 'keyup') { // 仅处理功能键
           this.setSettings(key)
         }
-
-
       },
       // 调整设置
       setSettings(keyLabel) {
@@ -171,12 +204,21 @@
       playAudio(i) {
         i += this.keyOffset
 
-        const audio = keyAudios[i]
-        if (audio.currentTime !== 0) {
-          audio.pause()
-          audio.currentTime = 0
+        const buffer = this.keyAudiosBuffer[i]
+
+        if (buffer) {
+          // 由于 AudioBufferSourceNode.start() 只能使用一次，所以每次播放时都要重新创建
+          const source = this.audioContext.createBufferSource()
+          source.buffer = buffer
+          // 连接增益节点
+          source.connect(this.gainNode)
+          // 通过管道（connect）把节点和出口（destination）连接
+          this.gainNode.connect(this.audioContext.destination)
+          // 音频流出
+          source.start()
+
         }
-        audio.play()
+
       },
     }
   }
@@ -189,66 +231,101 @@
   $color_yellow = #DFD565
   $color_orange = #E8A44A
 
-  .piano-body
-    border-radius 8px
-    box-shadow 0 10px 40px rgba(0, 0, 0, 0.4)
-    width 515px
-    padding 50px
-    padding-top: 0
-    margin 0 auto
-    background $piano_background
+  $window_radius = 8px
 
-    & > h5
-      text-align: center
-      font-size 13px
-      font-weight: 600
-      padding 5px 0 10px
+  #app
+    min-width 700px
+    height 100%
+    display: flex;
+    align-items center;
+    justify-content center;
+    position: relative
 
-    .info-wrap
-      margin-bottom: 10px
+    .piano-loading
+      position: fixed
+      top 0
+      left 0
+      right 0
+      bottom 0
+      background rgba(0, 0, 0, 0.7)
+      z-index 999
+      color #fff
+      display flex
+      align-items center
+      justify-content center
+      flex-direction column
 
-      .desc
-        display inline-block
-        padding 3px 4px
-        background $color_blue
-        color: #fff
-        font-size 12px
-        border-radius 3px
+    .piano-body
+      flex-shrink: 0
+      border 1px solid lighten($key_color_border, 10)
+      border-radius $window_radius
+      box-shadow 0 10px 40px rgba(0, 0, 0, 0.4)
+      width 515px
+      padding 50px
+      padding-top: 0
+      margin 0 auto
+      background $piano_background
 
-        &.pro
-          background $color_purple
+      & > h5
+        user-select none
+        background linear-gradient(180deg, #fff, #ddd)
+        border 1px solid $key_color_border
+        border-top: none
+        border-radius $window_radius
+        border-top-left-radius 0
+        border-top-right-radius 0
+        margin 0
+        text-align: center
+        font-size 13px
+        font-weight: 600
+        padding 5px 0
+        margin-bottom: 30px
 
-        &.pro2
-          background $color_green
+      .info-wrap
+        margin-bottom: 10px
 
-        & + .desc
-          margin-left: 5px
+        .desc
+          display inline-block
+          padding 3px 4px
+          background $color_blue
+          color: #fff
+          font-size 12px
+          border-radius 3px
 
-    .key + .key
-      margin-left: 2px
+          &.pro
+            background $color_purple
 
-    .keyboard-wrap
-      position: relative
+          &.pro2
+            background $color_green
 
-      .key.black
-        position: absolute
-        transform translateX(-15px)
+          & + .desc
+            margin-left: 5px
 
-    .control-wrap
-      margin-top: 2px
-      padding-left: 25px
+      .key + .key
+        margin-left: 2px
 
-      .key:nth-child(1), .key:nth-child(2)
-        background $color_yellow
+      .keyboard-wrap
+        position: relative
 
-        &:active, &.active
-          background darken($color_yellow, 10)
+        .key.black
+          position: absolute
+          transform translateX(-15px)
 
-      .key:nth-child(3), .key:nth-child(4)
-        background $color_orange
+      .control-wrap
+        margin-top: 2px
+        padding-left: 25px
 
-        &:active, &.active
-          background darken($color_orange, 10)
+        .key:nth-child(1), .key:nth-child(2)
+          background $color_yellow
+
+          &:active, &.active
+            background darken($color_yellow, 10)
+
+        .key:nth-child(3), .key:nth-child(4)
+          background $color_orange
+
+          &:active, &.active
+            background darken($color_orange, 10)
 
   /**/
 </style>
