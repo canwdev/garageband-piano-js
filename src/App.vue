@@ -1,5 +1,6 @@
 <template>
   <div id="app">
+    <div class="background-effects"><canvas ref="canvasVisualizer"></canvas></div>
     <div v-show="loadingCount+1 <= AUDIO_COUNT" class="piano-loading">
       <p>加载音频素材...</p>
       <p>{{ loadingCount }} / {{ AUDIO_COUNT }}</p>
@@ -41,7 +42,8 @@
 
 <script>
   import PianoKey from '@/components/PianoKey'
-  import {getAudioBuffer} from "@/utils"
+  import {getAudioBuffer} from "@/utils/index"
+  import {initVisualizer} from "@/utils/visualizer"
 
   const KEY_OFFSET = parseFloat(localStorage.getItem('KEY_OFFSET')) || 52 // 初始音频偏移量
   const VOLUME = parseFloat(localStorage.getItem('VOLUME')) || 1 // 初始音量
@@ -127,6 +129,13 @@
         this.gainNode.gain.value = VOLUME
         this.keyAudiosBuffer = []
 
+        // 创建化可视化分析器节点（此节点直接连接到音频出口）
+        this.audioAnalyser = this.audioContext.createAnalyser()
+        // 通过管道（connect）把节点和出口（destination）连接
+        this.audioAnalyser.connect(this.audioContext.destination)
+        // 初始化可视化背景
+        initVisualizer(this.$refs.canvasVisualizer, this.audioAnalyser)
+
         // 获取所有音频buffer
         for (let i = 1; i <= AUDIO_COUNT; i++) {
 
@@ -184,8 +193,7 @@
           this.setSettings(key)
         }
       },
-      // 调整设置
-      setSettings(keyLabel) {
+      setSettings(keyLabel) { // 调整设置
         switch (keyLabel) {
           case 'Z':
             this.keyOffset = Math.max(4, this.keyOffset - SEMITONE)
@@ -212,14 +220,15 @@
           source.buffer = buffer
           // 连接增益节点
           source.connect(this.gainNode)
-          // 通过管道（connect）把节点和出口（destination）连接
-          this.gainNode.connect(this.audioContext.destination)
+          // 连接可视化分析节点
+          this.gainNode.connect(this.audioAnalyser)
           // 音频流出
           source.start()
 
         }
 
       },
+
     }
   }
 </script>
@@ -241,6 +250,20 @@
     justify-content center;
     position: relative
 
+    .background-effects
+      position: absolute
+      z-index 0
+      background url("https://sagit.top:9002/upload/upload_20190824181830.png") no-repeat center/cover
+      top 0
+      left 0
+      right 0
+      bottom 0
+      &>canvas
+        width 100%
+        height 100%
+        background rgba(0, 0, 0, 0.09)
+        margin-bottom: -10px
+
     .piano-loading
       position: fixed
       top 0
@@ -256,6 +279,8 @@
       flex-direction column
 
     .piano-body
+      position: relative
+      z-index 1
       flex-shrink: 0
       border 1px solid lighten($key_color_border, 10)
       border-radius $window_radius
