@@ -1,6 +1,11 @@
 <template>
   <div id="app">
-    <div class="background-effects"><canvas ref="canvasVisualizer"></canvas></div>
+    <div class="background-effects">
+      <canvas ref="canvasVisualizer"></canvas>
+      <div class="config-wrap">
+        <button @click="toogleEffect">背景特效：{{ visualizerOn ? '开' : '关' }}</button>
+      </div>
+    </div>
     <div v-show="loadingCount+1 <= AUDIO_COUNT" class="piano-loading">
       <p>加载音频素材...</p>
       <p>{{ loadingCount }} / {{ AUDIO_COUNT }}</p>
@@ -43,7 +48,7 @@
 <script>
   import PianoKey from '@/components/PianoKey'
   import {getAudioBuffer, setDraggable} from "@/utils/index"
-  import {initVisualizer} from "@/utils/visualizer"
+  import canvasVisualizer from "@/utils/visualizer"
 
   const KEY_OFFSET = parseFloat(localStorage.getItem('KEY_OFFSET')) || 52 // 初始音频偏移量
   const VOLUME = parseFloat(localStorage.getItem('VOLUME')) || 1 // 初始音量
@@ -86,7 +91,8 @@
         {label: 'C', extraLabel: '🔈-', type: 3},
         {label: 'V', extraLabel: '🔈+', type: 3},
       ],
-      keyPressed: [] // 维护按下按键的数组
+      keyPressed: [], // 维护按下按键的数组
+      visualizerOn: JSON.parse(localStorage.getItem('visualizerOn') || true)
     }),
     computed: {
       // 八度音程表示
@@ -106,6 +112,14 @@
       },
       keyOffset(nv) {
         localStorage.setItem('KEY_OFFSET', nv)
+      },
+      visualizerOn(nv) {
+        if (nv) {
+          canvasVisualizer.start()
+        } else {
+          canvasVisualizer.stop()
+        }
+        localStorage.setItem('visualizerOn', nv)
       }
     },
     mounted() {
@@ -135,7 +149,7 @@
         // 通过管道（connect）把节点和出口（destination）连接
         this.audioAnalyser.connect(this.audioContext.destination)
         // 初始化可视化背景
-        initVisualizer(this.$refs.canvasVisualizer, this.audioAnalyser)
+        canvasVisualizer.init(this.$refs.canvasVisualizer, this.audioAnalyser)
 
         // 获取所有音频buffer
         for (let i = 1; i <= AUDIO_COUNT; i++) {
@@ -148,12 +162,16 @@
           this.loadingCount = i
         }
 
+        if (this.visualizerOn) canvasVisualizer.start()
+
         window.addEventListener('keydown', this.handleKey)
         window.addEventListener('keyup', this.handleKey)
       },
       destroyPiano() {
         window.removeEventListener('keydown', this.handleKey)
         window.removeEventListener('keyup', this.handleKey)
+
+        canvasVisualizer.stop()
       },
       handleKey(evt) {
         const key = evt.key.toUpperCase()
@@ -167,12 +185,6 @@
           return v.label === key
         })
 
-        if (i !== -1) { // 仅处理声音播放
-          if (evt.type === 'keydown') {
-            this.playAudio(i)
-          }
-        }
-
         if (i !== -1 || fnI !== -1) { // 处理功能键及键按下状态
           const ki = this.keyPressed.indexOf(key) // 是否在按下的列表中
 
@@ -180,6 +192,9 @@
             // 增加这个按键
             if (ki === -1) {
               this.keyPressed.push(key)
+            } else {
+              // 防止重复触发
+              return
             }
             // console.log(key, i)
           } else { // keyup
@@ -187,6 +202,12 @@
             if (ki !== -1) {
               this.keyPressed.splice(ki, 1)
             }
+          }
+        }
+
+        if (i !== -1) { // 仅处理声音播放
+          if (evt.type === 'keydown') {
+            this.playAudio(i)
           }
         }
 
@@ -229,7 +250,9 @@
         }
 
       },
-
+      toogleEffect(){
+        this.visualizerOn = !this.visualizerOn
+      }
     }
   }
 </script>
@@ -254,11 +277,22 @@
     .background-effects
       position: absolute
       z-index 0
-      background url("https://sagit.top:9002/upload/upload_20190824181830.png") no-repeat center/cover
+      background url("~@/assets/images/bg.jpg") no-repeat center/cover
       top 0
       left 0
       right 0
       bottom 0
+      &>.config-wrap
+        position: absolute
+        right 10px
+        bottom 10px
+        button
+          border-radius 5px
+          padding 5px
+          font-size 12px
+          background rgba(0, 0, 0, 0.51)
+          color: #fff
+          border: none
       &>canvas
         width 100%
         height 100%
@@ -283,14 +317,14 @@
       position: absolute
       z-index 1
       flex-shrink: 0
-      border 1px solid lighten($key_color_border, 10)
       border-radius $window_radius
-      box-shadow 0 10px 40px rgba(0, 0, 0, 0.4)
       width 515px
       padding 50px
       padding-top: 0
       margin 0 auto
       background $piano_background
+      backdrop-filter: saturate(180%) blur(20px)
+      $macBoxShadow()
 
       & > h5
         user-select none

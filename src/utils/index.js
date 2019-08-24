@@ -46,9 +46,12 @@ export function setDraggable(el, dragTargetEl) {
     let x = event.clientX - deltaX
     let y = event.clientY - deltaY
 
-    dragTargetEl.style.left = Math.max(0, x) + 'px'
-    dragTargetEl.style.top = Math.max(0, y) + 'px'
-    dragTargetEl.style.opacity = '0.8'
+    const docWidth = docEl.clientWidth - dragTargetEl.clientWidth
+    const docHeight = docEl.clientHeight - dragTargetEl.clientHeight
+
+    dragTargetEl.style.left = Math.min(docWidth, Math.max(0, x)) + 'px'
+    dragTargetEl.style.top =Math.min(docHeight, Math.max(0, y)) + 'px'
+    // dragTargetEl.style.opacity = '0.8'
 
     // return false;
   }
@@ -57,7 +60,7 @@ export function setDraggable(el, dragTargetEl) {
     docEl.removeEventListener('mousemove', move);
     docEl.removeEventListener('mouseup', stop);
 
-    dragTargetEl.style.opacity = '1'
+    // dragTargetEl.style.opacity = '1'
   }
 
   el.addEventListener('mousedown', start);

@@ -7,8 +7,9 @@
 - [X] 实现 GarageBand UI
 - [X] 基本交互以及弹奏功能
 - [X] 使用 Web Audio API
-- [ ] 长按键盘时音频重复播放的问题
+- [X] 窗口可拖动
 - [X] 背景 Canvas 可视化效果
+- [ ] 长按键盘时音频重复播放的问题
 - [ ] 滤波器（createBiquadFilter）
 - [ ] 多种音色（createOscillator）
 - [ ] 乐谱录制及播放
