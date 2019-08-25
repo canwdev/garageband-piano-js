@@ -51,6 +51,7 @@ export function setDraggable(el, dragTargetEl) {
 
     dragTargetEl.style.left = Math.min(docWidth, Math.max(0, x)) + 'px'
     dragTargetEl.style.top =Math.min(docHeight, Math.max(0, y)) + 'px'
+    dragTargetEl.style.cursor = 'move'
     // dragTargetEl.style.opacity = '0.8'
 
     // return false;
@@ -59,7 +60,7 @@ export function setDraggable(el, dragTargetEl) {
   function stop() {
     docEl.removeEventListener('mousemove', move);
     docEl.removeEventListener('mouseup', stop);
-
+    dragTargetEl.style.cursor = 'default'
     // dragTargetEl.style.opacity = '1'
   }
 

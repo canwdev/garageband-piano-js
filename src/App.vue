@@ -1,5 +1,6 @@
 <template>
   <div id="app">
+    <ForkMeRibbon/>
     <div class="background-effects">
       <canvas ref="canvasVisualizer"></canvas>
       <div class="config-wrap">
@@ -7,11 +8,10 @@
       </div>
     </div>
     <div v-show="loadingCount+1 <= AUDIO_COUNT" class="piano-loading">
-      <p>加载音频素材...</p>
-      <p>{{ loadingCount }} / {{ AUDIO_COUNT }}</p>
+      <p>加载音频素材 {{ loadingCount }}/{{ AUDIO_COUNT }}</p>
     </div>
     <div class="piano-body">
-      <h5 ref="dragBar">音乐键入 - 无名大钢琴</h5>
+      <h5 ref="dragBar">音乐键入 - 大钢琴</h5>
 
       <div class="info-wrap">
         <div class="desc">音量：{{ volume.toFixed(2) * 100 }}%</div>
@@ -27,7 +27,7 @@
             :label="v.label"
             :key-type="v.type"
             :active="keyPressed.indexOf(v.label) !== -1"
-            @mousedown.native="playAudio(i)"
+            @handle-click="playAudio(i)"
         />
       </div>
       <div class="control-wrap">
@@ -38,7 +38,7 @@
             :key-type="v.type"
             :extra-label="v.extraLabel"
             :active="keyPressed.indexOf(v.label) !== -1"
-            @mousedown.native="setSettings(v.label)"
+            @handle-click="setSettings(v.label)"
         />
       </div>
     </div>
@@ -47,6 +47,7 @@
 
 <script>
   import PianoKey from '@/components/PianoKey'
+  import ForkMeRibbon from '@/components/ForkMeRibbon'
   import {getAudioBuffer, setDraggable} from "@/utils/index"
   import canvasVisualizer from "@/utils/visualizer"
 
@@ -58,6 +59,7 @@
   export default {
     components: {
       PianoKey,
+      ForkMeRibbon
     },
     data: () => ({
       AUDIO_COUNT,
@@ -131,8 +133,12 @@
     },
     methods: {
       async initPiano() {
-        if (!window.AudioContext) {
-          alert('您的浏览器不支持 Web Audio API，无法使用本产品')
+        const AudioContext = window.AudioContext // Default
+          || window.webkitAudioContext // Safari and old versions of Chrome
+          || false;
+
+        if (!AudioContext) {
+          alert('您的浏览器不支持 Web Audio API，程序能无法正常运作')
           return
         }
 
@@ -308,6 +314,7 @@
       background rgba(0, 0, 0, 0.7)
       z-index 999
       color #fff
+      font-weight: bold
       display flex
       align-items center
       justify-content center
@@ -324,6 +331,7 @@
       margin 0 auto
       background $piano_background
       backdrop-filter: saturate(180%) blur(20px)
+      user-select none
       $macBoxShadow()
 
       & > h5

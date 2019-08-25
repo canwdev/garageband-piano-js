@@ -1,10 +1,14 @@
 <template>
-  <div class="key" :class="{black: keyType === 1, custom: keyType === 3, active: active}">
+  <button
+      ref="button"
+      class="key"
+      :class="{black: keyType === 1, custom: keyType === 3, active: active}"
+  >
     <div class="inner">
       {{ label }}
       <span v-if="extraLabel" class="extra-label">{{extraLabel}}</span>
     </div>
-  </div>
+  </button>
 </template>
 
 <script>
@@ -26,6 +30,13 @@
         type: Boolean,
         default: false
       }
+    },
+    mounted() {
+      const isTouch = ('ontouchstart' in window)
+
+      this.$refs.button.addEventListener(isTouch ? 'touchstart' : 'mousedown', () => {
+        this.$emit('handle-click')
+      })
     }
   }
 </script>
