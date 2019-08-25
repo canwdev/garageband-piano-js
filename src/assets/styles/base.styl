@@ -7,3 +7,19 @@ html,body
 
 body
   background #2E2E2E
+
+::-webkit-scrollbar-track
+  border 1px solid $key_color_border
+  border-radius: 3px
+  background-color: #DDDDDD
+
+::-webkit-scrollbar
+  width: 8px
+  height: 8px
+
+::-webkit-scrollbar-thumb
+  background-color: #2E2E2E
+  border-radius: 3px
+  &:hover
+    background-color lighten(#333, 20)
+

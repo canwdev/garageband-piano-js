@@ -20,9 +20,22 @@
         <div class="desc pro2">按下：{{ keyPressed.join(' ') }}</div>
       </div>
 
-      <div class="keyboard-wrap">
+      <div class="keyboard-wrap-full">
+        <div v-for="(oct, index) in pianoNoteTable" :key="index" class="octave">
+          <PianoKey
+              small
+              v-for="(v, i) in Object.entries(oct)"
+              :key="i"
+              :label="v[0]"
+              :extra-label="index.toString()"
+              :key-type="v[0].length === 1 ? 0 : 1"
+          />
+        </div>
+      </div>
+
+      <div class="keyboard-wrap-lite">
         <PianoKey
-            v-for="(v, i) in keyboardLayout"
+            v-for="(v, i) in keyboard18Keys"
             :key="i"
             :label="v.label"
             :key-type="v.type"
@@ -41,6 +54,7 @@
             @handle-click="setSettings(v.label)"
         />
       </div>
+
     </div>
   </div>
 </template>
@@ -56,6 +70,8 @@
   const SEMITONE = 12 // 两个半音的距离
   const AUDIO_COUNT = 88
 
+  import pianoNoteTable from '@/utils/pianoNoteTable'
+
   export default {
     components: {
       PianoKey,
@@ -67,7 +83,9 @@
       keyCount: AUDIO_COUNT,
       keyOffset: KEY_OFFSET,
       volume: VOLUME,
-      keyboardLayout: [
+      audioSourceTypeMP3: false,  // 音频素材是MP3或是使用createOscillator生成
+      pianoNoteTable,
+      keyboard18Keys: [
         {label: 'A', type: 0},
         {label: 'W', type: 1},
         {label: 'S', type: 0},
@@ -90,8 +108,8 @@
       controlKeys: [
         {label: 'Z', extraLabel: '-', type: 3},
         {label: 'X', extraLabel: '+', type: 3},
-        {label: 'C', extraLabel: '🔈-', type: 3},
-        {label: 'V', extraLabel: '🔈+', type: 3},
+        {label: 'C', extraLabel: '-', type: 3},
+        {label: 'V', extraLabel: '+', type: 3},
       ],
       keyPressed: [], // 维护按下按键的数组
       visualizerOn: JSON.parse(localStorage.getItem('visualizerOn') || true)
@@ -100,7 +118,7 @@
       // 八度音程表示
       octave() {
 
-        return 'C' + Math.floor(this.keyOffset / SEMITONE)
+        return 'C' + (Math.floor(this.keyOffset / SEMITONE) + 1)
       }
     },
     watch: {
@@ -125,6 +143,7 @@
       }
     },
     mounted() {
+      console.log(pianoNoteTable)
       this.initPiano()
       setDraggable(this.$refs.dragBar, this.$refs.dragBar.parentElement)
     },
@@ -148,7 +167,7 @@
         this.gainNode = this.audioContext.createGain()
         // 设置初始音量
         this.gainNode.gain.value = VOLUME
-        this.keyAudiosBuffer = []
+        this.keyAudiosData = []
 
         // 创建化可视化分析器节点（此节点直接连接到音频出口）
         this.audioAnalyser = this.audioContext.createAnalyser()
@@ -157,15 +176,29 @@
         // 初始化可视化背景
         canvasVisualizer.init(this.$refs.canvasVisualizer, this.audioAnalyser)
 
-        // 获取所有音频buffer
-        for (let i = 1; i <= AUDIO_COUNT; i++) {
+        // 获取所有音频
+        if (this.audioSourceTypeMP3) {
+          // 加载MP3数据为buffer
+          for (let i = 1; i <= AUDIO_COUNT; i++) {
+            const buffer = await getAudioBuffer(this.audioContext, require(`@/assets/pianoKeyAudio/${i}.mp3`)).catch(e => {
+              console.error(e)
+            })
 
-          const buffer = await getAudioBuffer(this.audioContext, require(`@/assets/pianoKeyAudio/${i}.mp3`)).catch(e => {
-            console.error(e)
+            this.keyAudiosData[i] = buffer
+            this.loadingCount = i
+          }
+        } else {
+          // 加载pianoNoteTable
+          let tI = 1
+          pianoNoteTable.forEach(i => {
+            const t = Object.entries(i)
+            t.forEach(v => {
+              this.keyAudiosData[tI] = v[1]
+              this.loadingCount = tI
+              tI++
+            })
           })
 
-          this.keyAudiosBuffer[i] = buffer
-          this.loadingCount = i
         }
 
         if (this.visualizerOn) canvasVisualizer.start()
@@ -183,7 +216,7 @@
         const key = evt.key.toUpperCase()
 
         // 遍历键盘数组
-        const i = this.keyboardLayout.findIndex(v => {
+        const i = this.keyboard18Keys.findIndex(v => {
           return v.label === key
         })
         // 遍历功能键数组
@@ -240,23 +273,33 @@
       playAudio(i) {
         i += this.keyOffset
 
-        const buffer = this.keyAudiosBuffer[i]
-
-        if (buffer) {
+        const data = this.keyAudiosData[i]
+        console.log(data)
+        if (data) {
           // 由于 AudioBufferSourceNode.start() 只能使用一次，所以每次播放时都要重新创建
-          const source = this.audioContext.createBufferSource()
-          source.buffer = buffer
+          let src = null
+
+          if (this.audioSourceTypeMP3) {
+            src = this.audioContext.createBufferSource()
+            src.buffer = data
+          } else {
+            src = this.audioContext.createOscillator()
+            src.type = 'square'
+            src.frequency.value = data
+          }
+
           // 连接增益节点
-          source.connect(this.gainNode)
+          src.connect(this.gainNode)
           // 连接可视化分析节点
           this.gainNode.connect(this.audioAnalyser)
           // 音频流出
-          source.start()
+          src.start()
 
+          return src
         }
 
       },
-      toogleEffect(){
+      toogleEffect() {
         this.visualizerOn = !this.visualizerOn
       }
     }
@@ -283,15 +326,17 @@
     .background-effects
       position: absolute
       z-index 0
-      background url("~@/assets/images/bg.jpg") no-repeat center/cover
+      background url("~@/assets/images/bg.jpg") no-repeat center / cover
       top 0
       left 0
       right 0
       bottom 0
-      &>.config-wrap
+
+      & > .config-wrap
         position: absolute
         right 10px
         bottom 10px
+
         button
           border-radius 5px
           padding 5px
@@ -299,7 +344,8 @@
           background rgba(0, 0, 0, 0.51)
           color: #fff
           border: none
-      &>canvas
+
+      & > canvas
         width 100%
         height 100%
         background rgba(0, 0, 0, 0.09)
@@ -372,28 +418,48 @@
       .key + .key
         margin-left: 2px
 
-      .keyboard-wrap
+      .keyboard-wrap-lite {
         position: relative
+        .key.black {
+        //  position: absolute
+        //  transform translateX(-15px)
+        }
+      }
 
-        .key.black
-          position: absolute
-          transform translateX(-15px)
-
-      .control-wrap
+      .control-wrap {
         margin-top: 2px
         padding-left: 25px
 
-        .key:nth-child(1), .key:nth-child(2)
+        .key:nth-child(1), .key:nth-child(2) {
           background $color_yellow
-
-          &:active, &.active
+          &:active, &.active {
             background darken($color_yellow, 10)
+          }
+        }
 
-        .key:nth-child(3), .key:nth-child(4)
+        .key:nth-child(3), .key:nth-child(4) {
           background $color_orange
-
-          &:active, &.active
+          &:active, &.active {
             background darken($color_orange, 10)
+          }
+        }
+      }
 
+
+      .keyboard-wrap-full {
+        margin-top: 10px
+        margin-bottom: 10px
+        width auto
+        height 50px
+        overflow-x auto
+        overflow-y hidden
+        white-space nowrap
+        .octave {
+          display inline-block
+          &+.octave {
+            padding-left: 5px
+          }
+        }
+      }
   /**/
 </style>
