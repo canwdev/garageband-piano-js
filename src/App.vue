@@ -11,7 +11,7 @@
       <p>加载音频素材 {{ loadingCount }}/{{ AUDIO_COUNT }}</p>
     </div>
     <div class="piano-body">
-      <h5 ref="dragBar">音乐键入 - Web Audio API 大钢琴</h5>
+      <h5 ref="dragBar">音乐键入 - {{ this.selectedToneType }}</h5>
 
       <div class="info-wrap">
         <div>
@@ -21,7 +21,16 @@
           <div class="desc pro2">按下：{{ keyPressedPC.join(' ') }}</div>
         </div>
 
-        <div class="desc">MP3音色：<input type="checkbox" v-model="toneSourceTypeMP3"></div>
+        <div class="desc pro3">音色：
+          <select v-model="selectedToneType">
+            <option value="sine">[波形] sine</option>
+            <option value="square">[波形] square</option>
+            <option value="sawtooth">[波形] sawtooth</option>
+            <option value="triangle">[波形] triangle</option>
+            <option value="pianoKeyAudio">[MP3] 钢琴原声 (LowRes)</option>
+            <option value="pianoKeyAudioFL">[MP3] 钢琴原声 (FL)</option>
+          </select>
+        </div>
 
       </div>
 
@@ -97,9 +106,10 @@
       AUDIO_COUNT,
       loadingCount: 0,
       keyCount: AUDIO_COUNT,
-      keyOffset: null,
+      keyOffset: KEY_OFFSET,
       volume: VOLUME,
-      toneSourceTypeMP3: JSON.parse(localStorage.getItem('toneSourceTypeMP3') || false),  // 音频素材是MP3或是使用createOscillator生成
+      selectedToneType: localStorage.getItem('selectedToneType') || 'square',
+      toneSourceTypeMP3: false,  // 音频素材是MP3或是使用createOscillator生成
       pianoNoteTable, // 由JS定义的频率列表，可用于定义全尺寸钢琴键盘（88键）
       liteKeyboardKeys: [
         {label: 'A', type: 0},
@@ -166,18 +176,29 @@
         }
         localStorage.setItem('visualizerOn', nv)
       },
-      toneSourceTypeMP3(nv) {
-        localStorage.setItem('toneSourceTypeMP3', nv)
+      selectedToneType(nv) {
+        localStorage.setItem('selectedToneType', nv)
+
+        const index = ['sine', 'square', 'sawtooth', 'triangle'].indexOf(nv)
+        this.toneSourceTypeMP3 = index === -1
 
         this.destroyPiano()
         this.initPiano()
       }
     },
     mounted() {
+      const isTouch = ('ontouchstart' in window)
+      if (isTouch) {
+        alert('请使用鼠标或键盘输入')
+      }
+
       this.keyOffset = KEY_OFFSET
 
+      const index = ['sine', 'square', 'sawtooth', 'triangle'].indexOf(this.selectedToneType)
+      this.toneSourceTypeMP3 = index === -1
+
       // 额外的功能键
-      const eKeys = [1,2,3,4,5,6,7]
+      const eKeys = [1, 2, 3, 4, 5, 6, 7]
       eKeys.forEach(v => {
         this.controlKeys.push({
           label: v.toString(),
@@ -224,7 +245,7 @@
         if (this.toneSourceTypeMP3) {
           // 加载MP3数据为buffer
           for (let i = 1; i <= AUDIO_COUNT; i++) {
-            const buffer = await getAudioBuffer(this.audioContext, require(`@/assets/pianoKeyAudio/${i}.mp3`)).catch(e => {
+            const buffer = await getAudioBuffer(this.audioContext, require(`@/assets/${this.selectedToneType}/${i}.mp3`)).catch(e => {
               console.error(e)
             })
 
@@ -317,14 +338,14 @@
         }
         if (/[1-9]/.test(keyLabel)) {
           // 直接跳转相应的八度音程
-          this.keyOffset = (Number(keyLabel)-1) * SEMITONE + 4
+          this.keyOffset = (Number(keyLabel) - 1) * SEMITONE + 4
         }
       },
       playTone(data, name) {
         clearTimeout(this.stopToneTimeout)
         // 由于 AudioBufferSourceNode.start() 只能使用一次，所以每次播放时都要重新创建
         let src = null
-        const audioContext =  this.audioContext
+        const audioContext = this.audioContext
 
         if (this.toneSourceTypeMP3) {
           src = audioContext.createBufferSource()
@@ -333,7 +354,7 @@
           // 创建一个OscillatorNode, 它表示一个周期性波形（振荡），基本上来说创造了一个音调
           src = audioContext.createOscillator()
           // 指定音调的类型，其他还有 sine|square|sawtooth|triangle 等
-          src.type = 'triangle'
+          src.type = this.selectedToneType
           // 设置当前播放声音的频率，也就是最终播放声音的调调
           src.frequency.value = data
         }
@@ -373,8 +394,8 @@
           // 淡出效果
           tone.gainNode.gain.exponentialRampToValueAtTime(0.0001, this.audioContext.currentTime + 1);
           this.stopToneTimeout = setTimeout(() => {
-           tone.audio.stop()
-           this.playingTone[name] = null
+            tone.audio.stop()
+            this.playingTone[name] = null
           }, 1000)
         } else {
           console.warn('stopTone: named tone not exist: ' + name)
@@ -392,7 +413,7 @@
           console.warn('handleLiteKeyboardPress: index tone not exist: ' + toneIndex + ', The name is ' + index)
         }
       },
-      handleFullKeyboardPress(el ,label, octaveIndex) {
+      handleFullKeyboardPress(el, label, octaveIndex) {
         // const octave = Object.assign({}, this.pianoNoteTable[[octaveIndex]])
         // const freq = octave[label]
 
@@ -414,7 +435,7 @@
         const keys = this.$refs.fullKeyboardKeys.map(v => {
           return v.$el
         })
-        return  keys.indexOf(pressedEl)
+        return keys.indexOf(pressedEl)
       }
     }
   }
@@ -426,6 +447,7 @@
   $color_green = #4DD584
   $color_yellow = #DFD565
   $color_orange = #E8A44A
+  $color_grey = #607D8B
 
   $window_radius = 8px
 
@@ -523,8 +545,14 @@
           font-size 12px
           border-radius 3px
 
-          input
-            height: 12px
+          select
+            background $color_grey
+            color: #fff
+            border-color #fff
+            text-align: center
+            border-radius 3px
+            width: 1.7em
+            height: 1.4em
             padding 0
 
           &.pro
@@ -532,7 +560,8 @@
 
           &.pro2
             background $color_green
-
+          &.pro3
+            background $color_grey
           & + .desc
             margin-left: 5px
 
@@ -541,9 +570,10 @@
 
       .lite-keyboard-wrap {
         position: relative
+
         .key.black {
-        //  position: absolute
-        //  transform translateX(-15px)
+          //  position: absolute
+          //  transform translateX(-15px)
         }
       }
 
@@ -553,6 +583,7 @@
 
         .key:nth-child(1), .key:nth-child(2) {
           background $color_yellow
+
           &:active, &.active {
             background darken($color_yellow, 10)
           }
@@ -560,6 +591,7 @@
 
         .key:nth-child(3), .key:nth-child(4) {
           background $color_orange
+
           &:active, &.active {
             background darken($color_orange, 10)
           }
@@ -575,18 +607,23 @@
         overflow-x auto
         overflow-y hidden
         white-space nowrap
+
         .octave {
+          max-width 224px // fix Safari
           display inline-block
           border 1px solid transparent
           border-radius 3px
           overflow: hidden;
-          &+.octave {
+
+          & + .octave {
             margin-left: 4px
           }
+
           &.active {
             border-color #ffeb3b
           }
         }
       }
+
   /**/
 </style>

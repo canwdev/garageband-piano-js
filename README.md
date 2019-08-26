@@ -9,7 +9,7 @@
 - [X] 使用 Web Audio API
 - [X] 窗口可拖动
 - [X] 背景 Canvas 可视化效果
-- [ ] 多种音色（createOscillator）
+- [X] 多种音色（createOscillator）
 - [X] 根据短按时长播放音频
 - [ ] 滤波器、延音踏板（createBiquadFilter）
 - [ ] 乐谱录制及播放

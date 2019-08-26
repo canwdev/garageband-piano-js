@@ -43,28 +43,26 @@
       pressed: false
     }),
     mounted() {
-      const isTouch = ('ontouchstart' in window)
       const btn = this.$refs.button
 
-      btn.addEventListener(isTouch ? 'touchstart' : 'mousedown', this.keyPressed)
-      btn.addEventListener(isTouch ? 'touchend' : 'mouseup', this.keyReleased)
-      if (!isTouch) {
-        btn.addEventListener('mouseover', this.keyPressed)
-        btn.addEventListener('mouseleave', this.keyReleased)
-      }
+      btn.addEventListener('mousedown', this.keyPressed)
+      btn.addEventListener('mouseup', this.keyReleased)
+
+      btn.addEventListener('mouseover', this.keyPressed)
+      btn.addEventListener('mouseleave', this.keyReleased)
     },
     methods: {
       keyPressed(event) {
         if (event.buttons & 1) {
           if (!this.pressed) {
-            this.$emit('handle-pressed', this.$refs.button, this.label, this.extraLabel)
+            this.$emit('handlePressed', this.$refs.button, this.label, this.extraLabel)
             this.pressed = true
           }
         }
       },
       keyReleased() {
         if (this.pressed) {
-          this.$emit('handle-released', this.$refs.button, this.label, this.extraLabel)
+          this.$emit('handleReleased', this.$refs.button, this.label, this.extraLabel)
           this.pressed = false
         }
       }
@@ -76,7 +74,7 @@
   $key_color_white = #DDDDDD
   $key_color_black = #2E2E2E
 
-  $keyStyle()
+  $keyStyle() {
     display inline-block
     border 1px solid $key_color_border
     background $key_color_white
@@ -88,6 +86,8 @@
     padding 2px 5px
     box-sizing border-box
     user-select none
+    outline none
+  }
 
   .key
     $keyStyle()
@@ -107,6 +107,7 @@
         font-size 12px
         transform scale(0.7)
         transform-origin left bottom
+
         sub
           transform scale(0.8)
 
@@ -156,8 +157,10 @@
       display flex
       align-items flex-end
       justify-content flex-start
+
       sub
         font-size 12px
         bottom 5px
+
   /**/
 </style>
