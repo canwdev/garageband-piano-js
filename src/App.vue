@@ -17,16 +17,22 @@
         <div>
           <div class="desc">音量：{{ volume.toFixed(2) * 100 }}%</div>
           <div class="desc">偏移：{{ keyOffset }} / {{ keyCount }}</div>
-          <div class="desc pro">八度音程：{{ octave }}</div>
+          <div class="desc pro">八度音程：C{{ octave }}</div>
           <div class="desc pro2">按下：{{ keyPressedPC.join(' ') }}</div>
         </div>
 
-        <div class="desc pro">MP3音色：<input type="checkbox" v-model="toneSourceTypeMP3"></div>
+        <div class="desc">MP3音色：<input type="checkbox" v-model="toneSourceTypeMP3"></div>
 
       </div>
 
-      <div class="full-keyboard-wrap">
-        <div v-for="(oct, index) in pianoNoteTable" :key="index" class="octave">
+      <div class="full-keyboard-wrap" ref="fullKeyboard">
+        <div
+            ref="fullKeyboardOctaves"
+            v-for="(oct, index) in pianoNoteTable"
+            :key="index"
+            class="octave"
+            :class="{active: index === octave}"
+        >
           <PianoKey
               ref="fullKeyboardKeys"
               small
@@ -91,9 +97,9 @@
       AUDIO_COUNT,
       loadingCount: 0,
       keyCount: AUDIO_COUNT,
-      keyOffset: KEY_OFFSET,
+      keyOffset: null,
       volume: VOLUME,
-      toneSourceTypeMP3: false,  // 音频素材是MP3或是使用createOscillator生成
+      toneSourceTypeMP3: JSON.parse(localStorage.getItem('toneSourceTypeMP3') || false),  // 音频素材是MP3或是使用createOscillator生成
       pianoNoteTable, // 由JS定义的频率列表，可用于定义全尺寸钢琴键盘（88键）
       liteKeyboardKeys: [
         {label: 'A', type: 0},
@@ -127,7 +133,7 @@
     computed: {
       // 八度音程表示
       octave() {
-        return 'C' + (Math.floor(this.keyOffset / SEMITONE) + 1)
+        return Math.floor(this.keyOffset / SEMITONE) + 1
       }
     },
     watch: {
@@ -141,6 +147,16 @@
       },
       keyOffset(nv) {
         localStorage.setItem('KEY_OFFSET', nv)
+
+        // 平滑滚动到相应八度
+        const fullKeyboard = this.$refs.fullKeyboard
+        const octaveEl = this.$refs.fullKeyboardOctaves[this.octave]
+        //.scrollIntoView({ block: 'end',  behavior: 'smooth' })
+        fullKeyboard.scrollTo({
+          left: octaveEl.offsetLeft - 50,
+          behavior: "smooth"
+        })
+
       },
       visualizerOn(nv) {
         if (nv) {
@@ -150,12 +166,15 @@
         }
         localStorage.setItem('visualizerOn', nv)
       },
-      toneSourceTypeMP3() {
+      toneSourceTypeMP3(nv) {
+        localStorage.setItem('toneSourceTypeMP3', nv)
+
         this.destroyPiano()
         this.initPiano()
       }
     },
     mounted() {
+      this.keyOffset = KEY_OFFSET
       this.initPiano()
       setDraggable(this.$refs.dragBar, this.$refs.dragBar.parentElement)
     },
@@ -247,7 +266,7 @@
             if (ki === -1) {
               this.keyPressedPC.push(key)
             } else {
-              // 防止重复触发
+              // 防止重复触发(重要！)
               return
             }
             // console.log(key, i)
@@ -538,14 +557,20 @@
         margin-top: 10px
         margin-bottom: 10px
         width auto
-        height 50px
+        height 53px
         overflow-x auto
         overflow-y hidden
         white-space nowrap
         .octave {
           display inline-block
+          border 1px solid transparent
+          border-radius 3px
+          overflow: hidden;
           &+.octave {
-            padding-left: 5px
+            margin-left: 4px
+          }
+          &.active {
+            border-color #ffeb3b
           }
         }
       }
