@@ -122,10 +122,10 @@
         {label: '\'', type: 0},
       ],
       controlKeys: [
-        {label: 'Z', extraLabel: '﹣', type: 3},
-        {label: 'X', extraLabel: '﹢', type: 3},
-        {label: 'C', extraLabel: '﹣', type: 3},
-        {label: 'V', extraLabel: '﹢', type: 3},
+        {label: 'Z', extraLabel: '﹣', type: 2},
+        {label: 'X', extraLabel: '﹢', type: 2},
+        {label: 'C', extraLabel: '﹣', type: 2},
+        {label: 'V', extraLabel: '﹢', type: 2},
       ],
       keyPressedPC: [], // 维护按下PC键盘按键的数组
       visualizerOn: JSON.parse(localStorage.getItem('visualizerOn') || true)
@@ -175,6 +175,16 @@
     },
     mounted() {
       this.keyOffset = KEY_OFFSET
+
+      // 额外的功能键
+      const eKeys = [1,2,3,4,5,6,7]
+      eKeys.forEach(v => {
+        this.controlKeys.push({
+          label: v.toString(),
+          type: -1
+        })
+      })
+
       this.initPiano()
       setDraggable(this.$refs.dragBar, this.$refs.dragBar.parentElement)
     },
@@ -304,6 +314,10 @@
           case 'V':
             this.volume = Math.min(1, this.volume + 0.1)
             break;
+        }
+        if (/[1-9]/.test(keyLabel)) {
+          // 直接跳转相应的八度音程
+          this.keyOffset = (Number(keyLabel)-1) * SEMITONE + 4
         }
       },
       playTone(data, name) {

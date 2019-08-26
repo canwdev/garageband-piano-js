@@ -2,7 +2,7 @@
   <button
       ref="button"
       class="key"
-      :class="{black: keyType === 1, custom: keyType === 3, pressed: pressed, small}"
+      :class="{black: keyType === 1, custom: keyType === 2, hidden: keyType === -1, pressed: pressed, small}"
   >
     <div class="inner">
       {{ label }} <sub>{{extraLabel}}</sub>
@@ -15,7 +15,7 @@
     props: {
       keyType: {
         type: Number,
-        default: 0  // 0 为白键，1 为黑键
+        default: 0  // 0 为白键，1 为黑键, 2 为自定义，-1 为隐藏
       },
       label: {
         type: String,
@@ -112,6 +112,9 @@
 
     &.custom
       height 45px
+
+    &.hidden
+      display none
 
     &:active, &.pressed
       background darken($key_color_white, 10)
