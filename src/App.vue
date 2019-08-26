@@ -4,45 +4,55 @@
     <div class="background-effects">
       <canvas ref="canvasVisualizer"></canvas>
       <div class="config-wrap">
-        <button @click="toogleEffect">背景特效：{{ visualizerOn ? '开' : '关' }}</button>
+        <button @click="toggleVisualizerOn">背景特效：{{ visualizerOn ? '开' : '关' }}</button>
       </div>
     </div>
     <div v-show="loadingCount+1 <= AUDIO_COUNT" class="piano-loading">
       <p>加载音频素材 {{ loadingCount }}/{{ AUDIO_COUNT }}</p>
     </div>
     <div class="piano-body">
-      <h5 ref="dragBar">音乐键入 - 大钢琴</h5>
+      <h5 ref="dragBar">音乐键入 - Web Audio API 大钢琴</h5>
 
       <div class="info-wrap">
-        <div class="desc">音量：{{ volume.toFixed(2) * 100 }}%</div>
-        <div class="desc">偏移：{{ keyOffset }} / {{ keyCount }}</div>
-        <div class="desc pro">八度音程：{{ octave }}</div>
-        <div class="desc pro2">按下：{{ keyPressed.join(' ') }}</div>
+        <div>
+          <div class="desc">音量：{{ volume.toFixed(2) * 100 }}%</div>
+          <div class="desc">偏移：{{ keyOffset }} / {{ keyCount }}</div>
+          <div class="desc pro">八度音程：{{ octave }}</div>
+          <div class="desc pro2">按下：{{ keyPressedPC.join(' ') }}</div>
+        </div>
+
+        <div class="desc pro">MP3音色：<input type="checkbox" v-model="toneSourceTypeMP3"></div>
+
       </div>
 
-      <div class="keyboard-wrap-full">
+      <div class="full-keyboard-wrap">
         <div v-for="(oct, index) in pianoNoteTable" :key="index" class="octave">
           <PianoKey
+              ref="fullKeyboardKeys"
               small
-              v-for="(v, i) in Object.entries(oct)"
-              :key="i"
+              v-for="(v, subIndex) in Object.entries(oct)"
+              :key="subIndex"
               :label="v[0]"
               :extra-label="index.toString()"
               :key-type="v[0].length === 1 ? 0 : 1"
+              @handle-pressed="handleFullKeyboardPress"
+              @handle-released="handleFullKeyboardRelease"
           />
         </div>
       </div>
 
-      <div class="keyboard-wrap-lite">
+      <div class="lite-keyboard-wrap">
         <PianoKey
-            v-for="(v, i) in keyboard18Keys"
+            v-for="(v, i) in liteKeyboardKeys"
             :key="i"
             :label="v.label"
             :key-type="v.type"
-            :active="keyPressed.indexOf(v.label) !== -1"
-            @handle-click="playAudio(i)"
+            :active="keyPressedPC.indexOf(v.label) !== -1"
+            @handle-pressed="handleLiteKeyboardPress(i)"
+            @handle-released="stopTone(i)"
         />
       </div>
+
       <div class="control-wrap">
         <PianoKey
             v-for="(v, i) in controlKeys"
@@ -50,8 +60,8 @@
             :label="v.label"
             :key-type="v.type"
             :extra-label="v.extraLabel"
-            :active="keyPressed.indexOf(v.label) !== -1"
-            @handle-click="setSettings(v.label)"
+            :active="keyPressedPC.indexOf(v.label) !== -1"
+            @handle-pressed="setSettings(v.label)"
         />
       </div>
 
@@ -83,9 +93,9 @@
       keyCount: AUDIO_COUNT,
       keyOffset: KEY_OFFSET,
       volume: VOLUME,
-      audioSourceTypeMP3: false,  // 音频素材是MP3或是使用createOscillator生成
-      pianoNoteTable,
-      keyboard18Keys: [
+      toneSourceTypeMP3: false,  // 音频素材是MP3或是使用createOscillator生成
+      pianoNoteTable, // 由JS定义的频率列表，可用于定义全尺寸钢琴键盘（88键）
+      liteKeyboardKeys: [
         {label: 'A', type: 0},
         {label: 'W', type: 1},
         {label: 'S', type: 0},
@@ -106,18 +116,17 @@
         {label: '\'', type: 0},
       ],
       controlKeys: [
-        {label: 'Z', extraLabel: '-', type: 3},
-        {label: 'X', extraLabel: '+', type: 3},
-        {label: 'C', extraLabel: '-', type: 3},
-        {label: 'V', extraLabel: '+', type: 3},
+        {label: 'Z', extraLabel: '﹣', type: 3},
+        {label: 'X', extraLabel: '﹢', type: 3},
+        {label: 'C', extraLabel: '﹣', type: 3},
+        {label: 'V', extraLabel: '﹢', type: 3},
       ],
-      keyPressed: [], // 维护按下按键的数组
+      keyPressedPC: [], // 维护按下PC键盘按键的数组
       visualizerOn: JSON.parse(localStorage.getItem('visualizerOn') || true)
     }),
     computed: {
       // 八度音程表示
       octave() {
-
         return 'C' + (Math.floor(this.keyOffset / SEMITONE) + 1)
       }
     },
@@ -140,10 +149,13 @@
           canvasVisualizer.stop()
         }
         localStorage.setItem('visualizerOn', nv)
+      },
+      toneSourceTypeMP3() {
+        this.destroyPiano()
+        this.initPiano()
       }
     },
     mounted() {
-      console.log(pianoNoteTable)
       this.initPiano()
       setDraggable(this.$refs.dragBar, this.$refs.dragBar.parentElement)
     },
@@ -157,17 +169,20 @@
           || false;
 
         if (!AudioContext) {
-          alert('您的浏览器不支持 Web Audio API，程序能无法正常运作')
-          return
+          alert('您的浏览器不支持 Web Audio API，程序无法正常运作')
         }
 
         // 创建音频上下文对象
         this.audioContext = new AudioContext()
-        // 创建增益节点
+        // 创建增益节点，它可以控制音频的总音量
         this.gainNode = this.audioContext.createGain()
         // 设置初始音量
         this.gainNode.gain.value = VOLUME
-        this.keyAudiosData = []
+        // 钢琴键盘音源列表，从1开始，一共有88个
+        this.keyToneList = []
+        // 维护正在播放音调的列表，用于控制短按
+        this.playingTone = []
+        this.stopToneTimeout = null
 
         // 创建化可视化分析器节点（此节点直接连接到音频出口）
         this.audioAnalyser = this.audioContext.createAnalyser()
@@ -177,25 +192,25 @@
         canvasVisualizer.init(this.$refs.canvasVisualizer, this.audioAnalyser)
 
         // 获取所有音频
-        if (this.audioSourceTypeMP3) {
+        if (this.toneSourceTypeMP3) {
           // 加载MP3数据为buffer
           for (let i = 1; i <= AUDIO_COUNT; i++) {
             const buffer = await getAudioBuffer(this.audioContext, require(`@/assets/pianoKeyAudio/${i}.mp3`)).catch(e => {
               console.error(e)
             })
 
-            this.keyAudiosData[i] = buffer
+            this.keyToneList[i] = buffer
             this.loadingCount = i
           }
         } else {
           // 加载pianoNoteTable
-          let tI = 1
+          let number = 1
           pianoNoteTable.forEach(i => {
             const t = Object.entries(i)
             t.forEach(v => {
-              this.keyAudiosData[tI] = v[1]
-              this.loadingCount = tI
-              tI++
+              this.keyToneList[number] = v[1]
+              this.loadingCount = number
+              number++
             })
           })
 
@@ -203,20 +218,20 @@
 
         if (this.visualizerOn) canvasVisualizer.start()
 
-        window.addEventListener('keydown', this.handleKey)
-        window.addEventListener('keyup', this.handleKey)
+        window.addEventListener('keydown', this.handlePCKeyboard)
+        window.addEventListener('keyup', this.handlePCKeyboard)
       },
       destroyPiano() {
-        window.removeEventListener('keydown', this.handleKey)
-        window.removeEventListener('keyup', this.handleKey)
+        window.removeEventListener('keydown', this.handlePCKeyboard)
+        window.removeEventListener('keyup', this.handlePCKeyboard)
 
         canvasVisualizer.stop()
       },
-      handleKey(evt) {
+      handlePCKeyboard(evt) {
         const key = evt.key.toUpperCase()
 
         // 遍历键盘数组
-        const i = this.keyboard18Keys.findIndex(v => {
+        const i = this.liteKeyboardKeys.findIndex(v => {
           return v.label === key
         })
         // 遍历功能键数组
@@ -225,12 +240,12 @@
         })
 
         if (i !== -1 || fnI !== -1) { // 处理功能键及键按下状态
-          const ki = this.keyPressed.indexOf(key) // 是否在按下的列表中
+          const ki = this.keyPressedPC.indexOf(key) // 是否在按下的列表中
 
           if (evt.type === 'keydown') {
             // 增加这个按键
             if (ki === -1) {
-              this.keyPressed.push(key)
+              this.keyPressedPC.push(key)
             } else {
               // 防止重复触发
               return
@@ -239,14 +254,16 @@
           } else { // keyup
             // 移除按键
             if (ki !== -1) {
-              this.keyPressed.splice(ki, 1)
+              this.keyPressedPC.splice(ki, 1)
             }
           }
         }
 
         if (i !== -1) { // 仅处理声音播放
           if (evt.type === 'keydown') {
-            this.playAudio(i)
+            this.handleLiteKeyboardPress(i)
+          } else {
+            this.stopTone(i)
           }
         }
 
@@ -270,37 +287,101 @@
             break;
         }
       },
-      playAudio(i) {
-        i += this.keyOffset
+      playTone(data, name) {
+        clearTimeout(this.stopToneTimeout)
+        // 由于 AudioBufferSourceNode.start() 只能使用一次，所以每次播放时都要重新创建
+        let src = null
+        const audioContext =  this.audioContext
 
-        const data = this.keyAudiosData[i]
-        console.log(data)
-        if (data) {
-          // 由于 AudioBufferSourceNode.start() 只能使用一次，所以每次播放时都要重新创建
-          let src = null
-
-          if (this.audioSourceTypeMP3) {
-            src = this.audioContext.createBufferSource()
-            src.buffer = data
-          } else {
-            src = this.audioContext.createOscillator()
-            src.type = 'square'
-            src.frequency.value = data
-          }
-
-          // 连接增益节点
-          src.connect(this.gainNode)
-          // 连接可视化分析节点
-          this.gainNode.connect(this.audioAnalyser)
-          // 音频流出
-          src.start()
-
-          return src
+        if (this.toneSourceTypeMP3) {
+          src = audioContext.createBufferSource()
+          src.buffer = data
+        } else {
+          // 创建一个OscillatorNode, 它表示一个周期性波形（振荡），基本上来说创造了一个音调
+          src = audioContext.createOscillator()
+          // 指定音调的类型，其他还有 sine|square|sawtooth|triangle 等
+          src.type = 'triangle'
+          // 设置当前播放声音的频率，也就是最终播放声音的调调
+          src.frequency.value = data
         }
 
+        // 创建当前音调的增益节点，用于 stopTone 淡出效果
+        const currentGain = audioContext.createGain()
+        src.connect(currentGain)
+
+        if (!this.toneSourceTypeMP3) { // 仅为生成的波形制造淡入淡出效果
+          // 第0秒时音量为0
+          currentGain.gain.setValueAtTime(0, audioContext.currentTime)
+          // 第0.1秒时音量为1，淡入
+          // AudioParam.linearRampToValueAtTime()
+          currentGain.gain.exponentialRampToValueAtTime(1, audioContext.currentTime + 0.05)
+          // 1.5秒内声音慢慢降低，淡出
+          currentGain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 1.5);
+        }
+
+        // 连接总增益节点
+        currentGain.connect(this.gainNode)
+        // 连接可视化分析节点
+        this.gainNode.connect(this.audioAnalyser)
+        // 音频流出
+        src.start(audioContext.currentTime)
+
+        // 维护正在播放的列表
+        this.playingTone[name] = {audio: src, gainNode: currentGain}
+        return src
       },
-      toogleEffect() {
+      stopTone(name) { // 停止播放
+        clearTimeout(this.stopToneTimeout)
+
+        const tone = this.playingTone[name]
+
+        if (tone) {
+          // TODO: 延音踏板 TAB
+          // 淡出效果
+          tone.gainNode.gain.exponentialRampToValueAtTime(0.0001, this.audioContext.currentTime + 1);
+          this.stopToneTimeout = setTimeout(() => {
+           tone.audio.stop()
+           this.playingTone[name] = null
+          }, 1000)
+        } else {
+          console.warn('stopTone: named tone not exist: ' + name)
+        }
+      },
+      toggleVisualizerOn() {
         this.visualizerOn = !this.visualizerOn
+      },
+      handleLiteKeyboardPress(index) {
+        let toneIndex = index + this.keyOffset
+        const data = this.keyToneList[toneIndex]
+        if (data) {
+          this.playTone(data, index)
+        } else {
+          console.warn('handleLiteKeyboardPress: index tone not exist: ' + toneIndex + ', The name is ' + index)
+        }
+      },
+      handleFullKeyboardPress(el ,label, octaveIndex) {
+        // const octave = Object.assign({}, this.pianoNoteTable[[octaveIndex]])
+        // const freq = octave[label]
+
+        const index = this.getFullKeyboardPressedIndex(el) + 1
+        const data = this.keyToneList[index]
+
+        if (data) {
+          this.playTone(data, index)
+        } else {
+          console.warn('handleFullKeyboardPress: index tone not exist: ' + index)
+        }
+      },
+      handleFullKeyboardRelease(el) {
+        const index = this.getFullKeyboardPressedIndex(el) + 1
+        this.stopTone(index)
+      },
+      getFullKeyboardPressedIndex(pressedEl) {
+        // 获取当前按键在 keyToneList 的索引
+        const keys = this.$refs.fullKeyboardKeys.map(v => {
+          return v.$el
+        })
+        return  keys.indexOf(pressedEl)
       }
     }
   }
@@ -396,6 +477,9 @@
         margin-bottom: 30px
 
       .info-wrap
+        display flex
+        align-items center
+        justify-content space-between
         margin-bottom: 10px
 
         .desc
@@ -405,6 +489,10 @@
           color: #fff
           font-size 12px
           border-radius 3px
+
+          input
+            height: 12px
+            padding 0
 
           &.pro
             background $color_purple
@@ -418,7 +506,7 @@
       .key + .key
         margin-left: 2px
 
-      .keyboard-wrap-lite {
+      .lite-keyboard-wrap {
         position: relative
         .key.black {
         //  position: absolute
@@ -446,7 +534,7 @@
       }
 
 
-      .keyboard-wrap-full {
+      .full-keyboard-wrap {
         margin-top: 10px
         margin-bottom: 10px
         width auto

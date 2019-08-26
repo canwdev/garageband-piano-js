@@ -2,7 +2,7 @@
   <button
       ref="button"
       class="key"
-      :class="{black: keyType === 1, custom: keyType === 3, active: active, small}"
+      :class="{black: keyType === 1, custom: keyType === 3, pressed: pressed, small}"
   >
     <div class="inner">
       {{ label }} <sub>{{extraLabel}}</sub>
@@ -34,12 +34,40 @@
         default: false
       }
     },
+    watch: {
+      active(nv) {
+        this.pressed = nv
+      }
+    },
+    data: () => ({
+      pressed: false
+    }),
     mounted() {
       const isTouch = ('ontouchstart' in window)
+      const btn = this.$refs.button
 
-      this.$refs.button.addEventListener(isTouch ? 'touchstart' : 'mousedown', () => {
-        this.$emit('handle-click')
-      })
+      btn.addEventListener(isTouch ? 'touchstart' : 'mousedown', this.keyPressed)
+      btn.addEventListener(isTouch ? 'touchend' : 'mouseup', this.keyReleased)
+      if (!isTouch) {
+        btn.addEventListener('mouseover', this.keyPressed)
+        btn.addEventListener('mouseleave', this.keyReleased)
+      }
+    },
+    methods: {
+      keyPressed(event) {
+        if (event.buttons & 1) {
+          if (!this.pressed) {
+            this.$emit('handle-pressed', this.$refs.button, this.label, this.extraLabel)
+            this.pressed = true
+          }
+        }
+      },
+      keyReleased() {
+        if (this.pressed) {
+          this.$emit('handle-released', this.$refs.button, this.label, this.extraLabel)
+          this.pressed = false
+        }
+      }
     }
   }
 </script>
@@ -79,11 +107,13 @@
         font-size 12px
         transform scale(0.7)
         transform-origin left bottom
+        sub
+          transform scale(0.8)
 
     &.custom
       height 45px
 
-    &:active, &.active
+    &:active, &.pressed
       background darken($key_color_white, 10)
 
     &.black
@@ -112,7 +142,7 @@
         border-color $key_color_black
         height 100%
 
-      &:active, &.active
+      &:active, &.pressed
         &::before
           background lighten($key_color_black, 10)
 
