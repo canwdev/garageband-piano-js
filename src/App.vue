@@ -11,7 +11,7 @@
       <p>加载音频素材 {{ loadingCount }}/{{ AUDIO_COUNT }}</p>
     </div>
     <div class="piano-body">
-      <h5 ref="dragBar">音乐键入 - {{ this.selectedToneType }}</h5>
+      <h5 ref="dragBar">音乐键入 - {{ this.optionsToneTypes.filter(v => v.value === this.selectedToneType)[0].label }}</h5>
 
       <div class="info-wrap">
         <div>
@@ -23,12 +23,7 @@
 
         <div class="desc pro3">音色：
           <select v-model="selectedToneType">
-            <option value="sine">[波形] sine</option>
-            <option value="square">[波形] square</option>
-            <option value="sawtooth">[波形] sawtooth</option>
-            <option value="triangle">[波形] triangle</option>
-            <option value="pianoKeyAudio">[MP3] 钢琴原声 (LowRes)</option>
-            <option value="pianoKeyAudioFL">[MP3] 钢琴原声 (FL)</option>
+            <option v-for="v in optionsToneTypes" :value="v.value">{{ v.label }}</option>
           </select>
         </div>
 
@@ -89,13 +84,12 @@
   import ForkMeRibbon from '@/components/ForkMeRibbon'
   import {getAudioBuffer, setDraggable} from "@/utils/index"
   import canvasVisualizer from "@/utils/visualizer"
+  import pianoNoteTable from '@/utils/pianoNoteTable'
 
   const KEY_OFFSET = parseFloat(localStorage.getItem('KEY_OFFSET')) || 52 // 初始音频偏移量
   const VOLUME = parseFloat(localStorage.getItem('VOLUME')) || 1 // 初始音量
   const SEMITONE = 12 // 两个半音的距离
   const AUDIO_COUNT = 88
-
-  import pianoNoteTable from '@/utils/pianoNoteTable'
 
   export default {
     components: {
@@ -106,9 +100,17 @@
       AUDIO_COUNT,
       loadingCount: 0,
       keyCount: AUDIO_COUNT,
-      keyOffset: KEY_OFFSET,
+      keyOffset: null,
       volume: VOLUME,
-      selectedToneType: localStorage.getItem('selectedToneType') || 'square',
+      selectedToneType: localStorage.getItem('selectedToneType') || 'sine',
+      optionsToneTypes: [ // https://codepen.io/gregh/pen/LxJEaj
+        { isMP3: false ,value: 'sine', label: '正弦波(sine)'},
+        { isMP3: false ,value: 'square', label: '方波(square)'},
+        { isMP3: false ,value: 'sawtooth', label: '锯齿波(sawtooth)'},
+        { isMP3: false ,value: 'triangle', label: '三角波(triangle)'},
+        { isMP3: true ,value: 'pianoKeyAudio', label: '钢琴原声(LowRes)'},
+        { isMP3: true ,value: 'pianoKeyAudioFL', label: '钢琴原声(FL)'},
+      ],
       toneSourceTypeMP3: false,  // 音频素材是MP3或是使用createOscillator生成
       pianoNoteTable, // 由JS定义的频率列表，可用于定义全尺寸钢琴键盘（88键）
       liteKeyboardKeys: [
@@ -158,13 +160,13 @@
       keyOffset(nv) {
         localStorage.setItem('KEY_OFFSET', nv)
 
-        // 平滑滚动到相应八度
+        // 滚动到相应八度
         const fullKeyboard = this.$refs.fullKeyboard
         const octaveEl = this.$refs.fullKeyboardOctaves[this.octave]
         //.scrollIntoView({ block: 'end',  behavior: 'smooth' })
         fullKeyboard.scrollTo({
           left: octaveEl.offsetLeft - 50,
-          behavior: "smooth"
+          behavior: "instant" // smooth
         })
 
       },
@@ -179,8 +181,7 @@
       selectedToneType(nv) {
         localStorage.setItem('selectedToneType', nv)
 
-        const index = ['sine', 'square', 'sawtooth', 'triangle'].indexOf(nv)
-        this.toneSourceTypeMP3 = index === -1
+        this.toneSourceTypeMP3 = this.optionsToneTypes.filter(v => v.value === this.selectedToneType)[0].isMP3 || false
 
         this.destroyPiano()
         this.initPiano()
@@ -194,8 +195,7 @@
 
       this.keyOffset = KEY_OFFSET
 
-      const index = ['sine', 'square', 'sawtooth', 'triangle'].indexOf(this.selectedToneType)
-      this.toneSourceTypeMP3 = index === -1
+      this.toneSourceTypeMP3 = this.optionsToneTypes.filter(v => v.value === this.selectedToneType)[0].isMP3 || false
 
       // 额外的功能键
       const eKeys = [1, 2, 3, 4, 5, 6, 7]

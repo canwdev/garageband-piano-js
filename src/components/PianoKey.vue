@@ -43,6 +43,7 @@
       pressed: false
     }),
     mounted() {
+      // const isTouch = ('ontouchstart' in window)
       const btn = this.$refs.button
 
       btn.addEventListener('mousedown', this.keyPressed)
@@ -55,14 +56,14 @@
       keyPressed(event) {
         if (event.buttons & 1) {
           if (!this.pressed) {
-            this.$emit('handlePressed', this.$refs.button, this.label, this.extraLabel)
+            this.$emit('handle-pressed', this.$refs.button, this.label, this.extraLabel)
             this.pressed = true
           }
         }
       },
       keyReleased() {
         if (this.pressed) {
-          this.$emit('handleReleased', this.$refs.button, this.label, this.extraLabel)
+          this.$emit('handle-released', this.$refs.button, this.label, this.extraLabel)
           this.pressed = false
         }
       }
