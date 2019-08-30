@@ -56,7 +56,7 @@ export default {
     const HEIGHT = canvas.height;
     // console.log('WIDTH: ', WIDTH, 'HEIGHT: ', HEIGHT)
 
-    const barWidth = (WIDTH / bufferLength) * 40;
+    const barWidth = (WIDTH / bufferLength) * 38;
     // console.log('BARWIDTH: ', barWidth)
 
     // console.log('TOTAL WIDTH: ', (117 * 10) + (118 * barWidth)) // (total space between bars)+(total width of all bars)
@@ -115,7 +115,7 @@ export default {
     this.visualizerInterval = setInterval(() => {
       requestAnimationFrame(this.renderFrame);
 
-    }, 30)
+    }, 20)
   },
   stop() {
     const ctx = this.canvas.getContext('2d')

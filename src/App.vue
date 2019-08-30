@@ -296,6 +296,7 @@
             // 增加这个按键
             if (ki === -1) {
               this.keyPressedPC.push(key)
+              console.log(this.keyPressedPC)
             } else {
               // 防止重复触发(重要！)
               return
@@ -584,7 +585,7 @@
         .key:nth-child(1), .key:nth-child(2) {
           background $color_yellow
 
-          &:active, &.active {
+          &:active, &.pressed {
             background darken($color_yellow, 10)
           }
         }
@@ -592,7 +593,7 @@
         .key:nth-child(3), .key:nth-child(4) {
           background $color_orange
 
-          &:active, &.active {
+          &:active, &.pressed {
             background darken($color_orange, 10)
           }
         }
