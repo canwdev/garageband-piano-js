@@ -1,8 +1,8 @@
 # GarageBand Piano JS
 
-> 灵感来自 GarageBand 钢琴窗口
+> 用 Vue + WebAudioAPI 实现的库乐队网页钢琴，灵感来自 GarageBand 钢琴窗口
 
-## TODO
+## 功能特性
 
 - [X] 实现 GarageBand UI
 - [X] 基本交互以及弹奏功能
@@ -11,6 +11,7 @@
 - [X] 背景 Canvas 可视化效果
 - [X] 多种音色（createOscillator）
 - [X] 根据短按时长播放音频
+- [ ] 节拍器
 - [ ] 滤波器、延音踏板（createBiquadFilter）
 - [ ] 乐谱录制及播放
 

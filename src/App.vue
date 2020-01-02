@@ -18,7 +18,7 @@
           <div class="desc">音量：{{ volume.toFixed(2) * 100 }}%</div>
           <div class="desc">偏移：{{ keyOffset }} / {{ keyCount }}</div>
           <div class="desc pro">八度音程：C{{ octave }}</div>
-          <div class="desc pro2">按下：{{ keyPressedPC.join(' ') }}</div>
+          <div class="desc pro2" v-show="keyPressedPC.length>0">按下：{{ keyPressedPC.join(' ') }}</div>
         </div>
 
         <div class="desc pro3">音色：
@@ -166,7 +166,7 @@
         //.scrollIntoView({ block: 'end',  behavior: 'smooth' })
         fullKeyboard.scrollTo({
           left: octaveEl.offsetLeft - 50,
-          behavior: "instant" // smooth
+          behavior: "smooth" // instant
         })
 
       },
@@ -296,7 +296,7 @@
             // 增加这个按键
             if (ki === -1) {
               this.keyPressedPC.push(key)
-              console.log(this.keyPressedPC)
+              // console.log(this.keyPressedPC)
             } else {
               // 防止重复触发(重要！)
               return
@@ -365,11 +365,10 @@
         src.connect(currentGain)
 
         if (!this.toneSourceTypeMP3) { // 仅为生成的波形制造淡入淡出效果
-          // 第0秒时音量为0
-          currentGain.gain.setValueAtTime(0, audioContext.currentTime)
-          // 第0.1秒时音量为1，淡入
-          // AudioParam.linearRampToValueAtTime()
-          currentGain.gain.exponentialRampToValueAtTime(1, audioContext.currentTime + 0.05)
+          // 第0秒时音量为0（下面这行需要注释，否则 Firefox 会报错）
+          // currentGain.gain.setValueAtTime(0, audioContext.currentTime)
+          // 淡入
+          currentGain.gain.exponentialRampToValueAtTime(1, audioContext.currentTime)
           // 1.5秒内声音慢慢降低，淡出
           currentGain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 1.5);
         }
@@ -463,7 +462,7 @@
     .background-effects
       position: absolute
       z-index 0
-      background url("~@/assets/images/bg.jpg") no-repeat center / cover
+      background url("~@/assets/images/bg2.png") no-repeat center / cover
       top 0
       left 0
       right 0
@@ -485,7 +484,6 @@
       & > canvas
         width 100%
         height 100%
-        background rgba(0, 0, 0, 0.09)
         margin-bottom: -10px
 
     .piano-loading
@@ -552,8 +550,7 @@
             border-color #fff
             text-align: center
             border-radius 3px
-            width: 1.7em
-            height: 1.4em
+            width: 50px
             padding 0
 
           &.pro
@@ -604,7 +601,7 @@
         margin-top: 10px
         margin-bottom: 10px
         width auto
-        height 53px
+        height 60px
         overflow-x auto
         overflow-y hidden
         white-space nowrap
