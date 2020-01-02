@@ -1,6 +1,6 @@
 <template>
-  <a class="github-fork-ribbon left-top" href="https://gitee.com/canwdev/garageband-piano-js"
-     data-ribbon="Fork me on Gitee"
+  <a class="github-fork-ribbon left-top" href="https://github.com/canwdev/garageband-piano-js.git"
+     data-ribbon="Fork me on Github"
      target="_blank"
   ></a>
 </template>
