@@ -109,7 +109,7 @@ export default defineComponent({
         for (let i = 1; i <= PianoConstant.KEY_COUNT; i++) {
           keyToneList.value[i] = await getAudioBuffer(
             audioContext.value,
-            `${location.origin}${import.meta.env.BASE_URL}/tones/${selectedToneType.value}/${i}.mp3`
+            `${import.meta.env.BASE_URL}tones/${selectedToneType.value}/${i}.mp3`
           ).catch((e) => {
             console.error(e)
           })
