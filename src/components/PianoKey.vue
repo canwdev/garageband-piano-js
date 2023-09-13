@@ -1,79 +1,87 @@
+<script>
+import {KeyType} from '@/enum/index'
+
+export default {
+  props: {
+    keyType: {
+      type: Number,
+      default: KeyType.WHITE,
+    },
+    label: {
+      type: String,
+      default: '',
+    },
+    extraLabel: {
+      type: String,
+      default: '',
+    },
+    active: {
+      type: Boolean,
+      default: false,
+    },
+    small: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  watch: {
+    active(nv) {
+      this.pressed = nv
+    },
+  },
+  data: () => ({
+    pressed: false,
+  }),
+  mounted() {
+    // const isTouch = ('ontouchstart' in window)
+    const btn = this.$refs.button
+
+    btn.addEventListener('mousedown', this.keyPressed)
+    btn.addEventListener('mouseup', this.keyReleased)
+
+    btn.addEventListener('mouseover', this.keyPressed)
+    btn.addEventListener('mouseleave', this.keyReleased)
+  },
+  methods: {
+    keyPressed(event) {
+      if (event.buttons & 1) {
+        if (!this.pressed) {
+          this.$emit('onPress', this.$refs.button, this.label, this.extraLabel)
+          this.pressed = true
+        }
+      }
+    },
+    keyReleased() {
+      if (this.pressed) {
+        this.$emit('onRelease', this.$refs.button, this.label, this.extraLabel)
+        this.pressed = false
+      }
+    },
+  },
+}
+</script>
+
 <template>
   <button
-      ref="button"
-      class="key"
-      :class="{black: keyType === 1, custom: keyType === 2, hidden: keyType === -1, pressed: pressed, small}"
+    ref="button"
+    class="key"
+    :class="{
+      black: keyType === 1,
+      custom: keyType === 2,
+      hidden: keyType === -1,
+      pressed: pressed,
+      small,
+    }"
   >
     <span class="inner">
-      {{ label }} <sub>{{extraLabel}}</sub>
+      {{ label }} <sub>{{ extraLabel }}</sub>
     </span>
   </button>
 </template>
 
-<script>
-  export default {
-    props: {
-      keyType: {
-        type: Number,
-        default: 0  // 0 为白键，1 为黑键, 2 为自定义，-1 为隐藏
-      },
-      label: {
-        type: String,
-        default: 'A'
-      },
-      extraLabel: {
-        type: String,
-        default: ''
-      },
-      active: {
-        type: Boolean,
-        default: false
-      },
-      small: {
-        type: Boolean,
-        default: false
-      }
-    },
-    watch: {
-      active(nv) {
-        this.pressed = nv
-      }
-    },
-    data: () => ({
-      pressed: false
-    }),
-    mounted() {
-      // const isTouch = ('ontouchstart' in window)
-      const btn = this.$refs.button
-
-      btn.addEventListener('mousedown', this.keyPressed)
-      btn.addEventListener('mouseup', this.keyReleased)
-
-      btn.addEventListener('mouseover', this.keyPressed)
-      btn.addEventListener('mouseleave', this.keyReleased)
-    },
-    methods: {
-      keyPressed(event) {
-        if (event.buttons & 1) {
-          if (!this.pressed) {
-            this.$emit('handle-pressed', this.$refs.button, this.label, this.extraLabel)
-            this.pressed = true
-          }
-        }
-      },
-      keyReleased() {
-        if (this.pressed) {
-          this.$emit('handle-released', this.$refs.button, this.label, this.extraLabel)
-          this.pressed = false
-        }
-      }
-    }
-  }
-</script>
-
 <style lang="scss" scoped>
-$key_color_white: #DDDDDD;
-$key_color_black: #2E2E2E;
+$key_color_white: #dddddd;
+$key_color_black: #2e2e2e;
 
 @mixin keyStyle() {
   display: inline-block;
@@ -125,7 +133,8 @@ $key_color_black: #2E2E2E;
     display: none;
   }
 
-  &:active, &.pressed {
+  &:active,
+  &.pressed {
     background: darken($key_color_white, 10);
   }
 
@@ -156,7 +165,8 @@ $key_color_black: #2E2E2E;
       height: 100%;
     }
 
-    &:active, &.pressed {
+    &:active,
+    &.pressed {
       &::before {
         background: lighten($key_color_black, 10);
       }
@@ -172,10 +182,9 @@ $key_color_black: #2E2E2E;
     justify-content: flex-start;
 
     sub {
-      font-size: 12px;
+      font-size: 14px;
       bottom: 5px;
     }
   }
 }
-
 </style>
