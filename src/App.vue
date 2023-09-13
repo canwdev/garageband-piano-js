@@ -29,6 +29,7 @@ export default defineComponent({
 
     const gainNode = shallowRef()
     const audioContext = shallowRef()
+    const audioAnalyser = shallowRef()
 
     // 初始音频偏移量
     const keyOffset = useLocalStorageNumber('KEY_OFFSET', 52)
@@ -98,9 +99,9 @@ export default defineComponent({
       stopToneTimeout.value = null
 
       // 创建化可视化分析器节点（此节点直接连接到音频出口）
-      // window.audioAnalyser = audioContext.value.createAnalyser()
+      audioAnalyser.value = audioContext.value.createAnalyser()
       // 通过管道（connect）把节点和出口（destination）连接
-      // window.audioAnalyser.connect(audioContext.value.destination)
+      audioAnalyser.value.connect(audioContext.value.destination)
 
       // 获取所有音频
       if (toneSourceTypeMP3.value) {
@@ -171,7 +172,7 @@ export default defineComponent({
       // 连接总增益节点
       currentGain.connect(gainNode.value)
       // 连接可视化分析节点
-      // gainNode.value.connect(window.audioAnalyser)
+      gainNode.value.connect(audioAnalyser.value)
       // 音频流出
       src.start(actx.currentTime)
 
@@ -390,7 +391,9 @@ export default defineComponent({
         <div class="desc pro3">
           音色：
           <select v-model="selectedToneType">
-            <option v-for="v in ToneTypesOptions" :value="v.value">{{ v.label }}</option>
+            <option v-for="(v, i) in ToneTypesOptions" :key="i" :value="v.value">
+              {{ v.label }}
+            </option>
           </select>
         </div>
       </div>
