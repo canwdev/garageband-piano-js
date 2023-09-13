@@ -1,6 +1,6 @@
 <script lang="ts">
 import {defineComponent, onBeforeUnmount, onMounted, ref, shallowRef, watch} from 'vue'
-import canvasVisualizer from '@/utils/visualizer'
+// import canvasVisualizer from '@/utils/visualizer'
 import {useLocalStorageBoolean} from '@/hooks/use-local-storage.ts'
 
 export default defineComponent({
@@ -8,26 +8,26 @@ export default defineComponent({
   setup() {
     const canvasRef = ref()
     const visualizerOn = useLocalStorageBoolean('visualizerOn', false)
-    watch(visualizerOn, (val) => {
-      if (val) {
-        canvasVisualizer.start()
-      } else {
-        canvasVisualizer.stop()
-      }
-      visualizerOn.value = val
-    })
+    // watch(visualizerOn, (val) => {
+    //   if (val) {
+    //     canvasVisualizer.start()
+    //   } else {
+    //     canvasVisualizer.stop()
+    //   }
+    //   visualizerOn.value = val
+    // })
 
-    onMounted(() => {
-      // TODO:初始化可视化背景
-      setTimeout(() => {
-        canvasVisualizer.init(canvasRef.value, window.audioAnalyser)
-        if (visualizerOn.value) canvasVisualizer.start()
-      }, 500)
-    })
-
-    onBeforeUnmount(() => {
-      canvasVisualizer.stop()
-    })
+    // onMounted(() => {
+    //   // TODO:初始化可视化背景
+    //   setTimeout(() => {
+    //     canvasVisualizer.init(canvasRef.value, window.audioAnalyser)
+    //     if (visualizerOn.value) canvasVisualizer.start()
+    //   }, 500)
+    // })
+    //
+    // onBeforeUnmount(() => {
+    //   canvasVisualizer.stop()
+    // })
     return {
       canvasRef,
       visualizerOn,
@@ -39,11 +39,11 @@ export default defineComponent({
 <template>
   <div class="background-effects">
     <canvas ref="canvasRef"></canvas>
-    <div class="config-wrap">
-      <button @click="visualizerOn = !visualizerOn">
-        背景特效：{{ visualizerOn ? '开' : '关' }}
-      </button>
-    </div>
+    <!--    <div class="config-wrap">-->
+    <!--      <button @click="visualizerOn = !visualizerOn">-->
+    <!--        背景特效：{{ visualizerOn ? '开' : '关' }}-->
+    <!--      </button>-->
+    <!--    </div>-->
   </div>
 </template>
 

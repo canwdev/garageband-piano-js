@@ -48,8 +48,12 @@ export default defineComponent({
     })
     const updateKeyOffsetPos = () => {
       // 滚动到相应八度
-      const octaveEl = miniKeyboardOctavesRef.value[octave.value]
+      const octaveEl: any = miniKeyboardOctavesRef.value[octave.value]
       //.scrollIntoView({ block: 'end',  behavior: 'smooth' })
+
+      if (!octaveEl) {
+        return
+      }
 
       miniKeyboardRef.value.scrollTo({
         left: octaveEl.offsetLeft - 50,
@@ -73,6 +77,7 @@ export default defineComponent({
     const initPiano = async () => {
       const AudioContext =
         window.AudioContext || // Default
+        // @ts-ignore
         window.webkitAudioContext || // Safari and old versions of Chrome
         false
 
@@ -93,9 +98,9 @@ export default defineComponent({
       stopToneTimeout.value = null
 
       // 创建化可视化分析器节点（此节点直接连接到音频出口）
-      window.audioAnalyser = audioContext.value.createAnalyser()
+      // window.audioAnalyser = audioContext.value.createAnalyser()
       // 通过管道（connect）把节点和出口（destination）连接
-      window.audioAnalyser.connect(audioContext.value.destination)
+      // window.audioAnalyser.connect(audioContext.value.destination)
 
       // 获取所有音频
       if (toneSourceTypeMP3.value) {
@@ -134,7 +139,7 @@ export default defineComponent({
     const playTone = (data, name) => {
       clearTimeout(stopToneTimeout.value)
       // 由于 AudioBufferSourceNode.start() 只能使用一次，所以每次播放时都要重新创建
-      let src = null
+      let src: any = null
       const actx = audioContext.value
 
       if (toneSourceTypeMP3.value) {
@@ -166,7 +171,7 @@ export default defineComponent({
       // 连接总增益节点
       currentGain.connect(gainNode.value)
       // 连接可视化分析节点
-      gainNode.value.connect(window.audioAnalyser)
+      // gainNode.value.connect(window.audioAnalyser)
       // 音频流出
       src.start(actx.currentTime)
 
@@ -374,7 +379,7 @@ export default defineComponent({
 
       <div class="info-wrap">
         <div>
-          <div class="desc">音量: {{ volume.toFixed(2) * 100 }}%</div>
+          <div class="desc">音量: {{ Number(volume.toFixed(2)) * 100 }}%</div>
           <div class="desc">偏移: {{ keyOffset }} / {{ PianoConstant.KEY_COUNT }}</div>
           <div class="desc pro">八度音程: C{{ octave }}</div>
           <div class="desc pro2" v-show="keyPressedPC.length > 0">

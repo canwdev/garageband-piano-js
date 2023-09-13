@@ -1,5 +1,6 @@
-<script>
+<script lang="ts">
 import {KeyType} from '@/enum/index'
+import {onMounted, ref, toRefs, watch} from 'vue'
 
 export default {
   props: {
@@ -24,46 +25,50 @@ export default {
       default: false,
     },
   },
-  watch: {
-    active(nv) {
-      this.pressed = nv
-    },
-  },
-  data: () => ({
-    pressed: false,
-  }),
-  mounted() {
-    // const isTouch = ('ontouchstart' in window)
-    const btn = this.$refs.button
+  emits: ['onPress', 'onRelease'],
+  setup(props, {emit}) {
+    const {active} = toRefs(props)
+    const buttonRef = ref()
+    const pressed = ref(false)
+    watch(active, (val) => {
+      pressed.value = val
+    })
 
-    btn.addEventListener('mousedown', this.keyPressed)
-    btn.addEventListener('mouseup', this.keyReleased)
-
-    btn.addEventListener('mouseover', this.keyPressed)
-    btn.addEventListener('mouseleave', this.keyReleased)
-  },
-  methods: {
-    keyPressed(event) {
+    const keyPressed = (event) => {
       if (event.buttons & 1) {
-        if (!this.pressed) {
-          this.$emit('onPress', this.$refs.button, this.label, this.extraLabel)
-          this.pressed = true
+        if (!pressed.value) {
+          emit('onPress', buttonRef.value)
+          pressed.value = true
         }
       }
-    },
-    keyReleased() {
-      if (this.pressed) {
-        this.$emit('onRelease', this.$refs.button, this.label, this.extraLabel)
-        this.pressed = false
+    }
+    const keyReleased = () => {
+      if (pressed.value) {
+        emit('onRelease', buttonRef.value)
+        pressed.value = false
       }
-    },
+    }
+    onMounted(() => {
+      // const isTouch = ('ontouchstart' in window)
+      const btn = buttonRef.value
+
+      btn.addEventListener('mousedown', keyPressed)
+      btn.addEventListener('mouseup', keyReleased)
+
+      btn.addEventListener('mouseover', keyPressed)
+      btn.addEventListener('mouseleave', keyReleased)
+    })
+    return {
+      pressed,
+      buttonRef,
+    }
   },
 }
 </script>
 
 <template>
   <button
-    ref="button"
+    ref="buttonRef"
     class="key"
     :class="{
       black: keyType === 1,
