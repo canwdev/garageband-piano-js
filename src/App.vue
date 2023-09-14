@@ -14,6 +14,7 @@ import {
 } from '@/enum'
 import BackgroundEffects from '@/components/BackgroundEffects.vue'
 import {useLocalStorageNumber, useLocalStorageString} from '@/hooks/use-local-storage.ts'
+import {useMainStore} from "@/store/main-store.ts";
 
 export default defineComponent({
   name: 'App',
@@ -23,6 +24,7 @@ export default defineComponent({
     PianoKey,
   },
   setup() {
+    const mainStore = useMainStore()
     const titleBarRef = ref()
     const miniKeyboardRef = ref()
     const miniKeyboardOctavesRef = ref([])
@@ -340,6 +342,7 @@ export default defineComponent({
     })
 
     return {
+      mainStore,
       titleBarRef,
       miniKeyboardRef,
       miniKeyboardOctavesRef,
@@ -366,7 +369,7 @@ export default defineComponent({
 </script>
 
 <template>
-  <div class="app-root">
+  <div class="app-root" :class="[mainStore.theme]">
     <ForkMeRibbon />
     <BackgroundEffects />
     <div v-show="loadingCount + 1 <= PianoConstant.KEY_COUNT" class="piano-loading">

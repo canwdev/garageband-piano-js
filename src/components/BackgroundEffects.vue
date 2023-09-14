@@ -51,7 +51,6 @@ export default defineComponent({
 .background-effects {
   position: absolute;
   z-index: 0;
-  background: url('@/assets/bg2.png') no-repeat center / cover;
   top: 0;
   left: 0;
   right: 0;

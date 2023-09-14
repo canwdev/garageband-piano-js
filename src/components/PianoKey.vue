@@ -35,7 +35,7 @@ export default {
     })
 
     const keyPressed = (event) => {
-      if (event.buttons & 1) {
+      if (event.buttons === 1) {
         if (!pressed.value) {
           emit('onPress', buttonRef.value)
           pressed.value = true

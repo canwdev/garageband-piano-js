@@ -8,7 +8,7 @@ export default defineComponent({
 
 <template>
   <a class="github-fork-ribbon left-top" href="https://github.com/canwdev/garageband-piano-js.git"
-     data-ribbon="Fork me on Github"
+     data-ribbon="Star me on Github"
      target="_blank"
   ></a>
 </template>
